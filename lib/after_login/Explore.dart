@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-
 import 'package:senior/after_login/wishlist.dart';
 import 'package:senior/chat/messages.dart';
 import 'package:senior/profile/profile.dart';
-import 'package:senior/pages/theme_provider.dart';
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({Key? key}) : super(key: key);
@@ -257,9 +254,6 @@ class _ExplorePageState extends State<ExplorePage> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.themeMode == ThemeMode.dark;
-
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -277,15 +271,6 @@ class _ExplorePageState extends State<ExplorePage> {
         ),
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(
-              isDark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
-              color: isDark ? Colors.amber : Colors.indigo,
-            ),
-            onPressed: () => themeProvider.toggleTheme(!isDark),
-          ),
-        ],
       ),
       body: Column(
         children: [
