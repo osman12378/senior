@@ -77,7 +77,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -86,7 +86,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           'Change Password',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        backgroundColor: Colors.white,
         elevation: 0,
       ),
       body: Padding(

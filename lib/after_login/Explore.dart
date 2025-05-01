@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import 'package:senior/after_login/wishlist.dart';
 import 'package:senior/chat/messages.dart';
 import 'package:senior/profile/profile.dart';
+import 'package:senior/pages/theme_provider.dart';
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({Key? key}) : super(key: key);
@@ -18,9 +22,8 @@ class _ExplorePageState extends State<ExplorePage> {
   List<Map<String, dynamic>> _categories = [];
   String? _selectedCategory;
   List<Map<String, dynamic>> _services = [];
-  
-  // To track the heart state for each service
   Map<String, bool> _favoriteStatus = {};
+  bool _isLoading = false; // Added flag for loading state
 
   @override
   void initState() {
@@ -29,9 +32,23 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   Future<void> loadCategories() async {
-    try {
-      final snapshot = await _firestore.collection('Category').get();
+    setState(() {
+      _isLoading = true; // Start loading when categories are being fetched
+    });
 
+    try {
+      // Get the current user
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) return;
+
+      // Fetch the user's role from the 'Users' collection
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final userData = userDoc.data();
+      final role =
+          userData?['role']; // Assuming 'role' field is in the user's document
+
+      // Load categories from Firestore
+      final snapshot = await _firestore.collection('Category').get();
       final categories = snapshot.docs.map((doc) {
         return {
           'id': doc.id,
@@ -39,6 +56,9 @@ class _ExplorePageState extends State<ExplorePage> {
           'type': doc['Type'],
         };
       }).toList();
+
+      categories
+          .insert(0, {'id': 'offers', 'name': 'Offers', 'type': 'special'});
 
       setState(() {
         _categories = categories;
@@ -49,12 +69,91 @@ class _ExplorePageState extends State<ExplorePage> {
       });
     } catch (e) {
       debugPrint('Error loading categories: $e');
+    } finally {
+      setState(() {
+        _isLoading = false; // End loading once the data is fetched
+      });
     }
   }
 
   Future<void> loadServicesByCategory(String categoryName) async {
+    setState(() {
+      _services = [];
+      _isLoading =
+          true; // Set loading state true when services are being fetched
+    });
+
+    if (categoryName == 'Offers') {
+      await loadOffers();
+    } else {
+      await loadRegularServices(categoryName);
+    }
+  }
+
+  Future<void> loadOffers() async {
     try {
-      // Get CategoryID
+      final now = Timestamp.now();
+
+      final offerSnapshot = await _firestore
+          .collection('Offer')
+          .where('endTime', isGreaterThan: now)
+          .get();
+
+      List<Map<String, dynamic>> loadedServices = [];
+
+      for (var offerDoc in offerSnapshot.docs) {
+        final offerData = offerDoc.data();
+        final serviceId = offerData['serviceID'];
+
+        final serviceDoc =
+            await _firestore.collection('Service').doc(serviceId).get();
+        if (!serviceDoc.exists) continue;
+
+        final serviceData = serviceDoc.data()!;
+        String? street;
+        if (serviceData['AddressID'] != null) {
+          final addressDoc = await _firestore
+              .collection('Address')
+              .doc(serviceData['AddressID'])
+              .get();
+          street = addressDoc.data()?['Street'] ?? 'Unknown Street';
+        }
+
+        String? imageUrl;
+        final imageSnapshot = await _firestore
+            .collection('Service Images')
+            .where('ServiceID', isEqualTo: serviceId)
+            .limit(1)
+            .get();
+        if (imageSnapshot.docs.isNotEmpty) {
+          imageUrl = imageSnapshot.docs.first.data()['URL'];
+        }
+
+        loadedServices.add({
+          'id': serviceId,
+          'description': serviceData['Description'],
+          'price': offerData['price'], // use price from Offer
+          'type': serviceData['Type'],
+          'availability': serviceData['Availability'],
+          'street': street,
+          'imageUrl': imageUrl,
+        });
+      }
+
+      setState(() {
+        _services = loadedServices;
+      });
+    } catch (e) {
+      debugPrint('Error loading offers: $e');
+    } finally {
+      setState(() {
+        _isLoading = false; // End loading after offers are fetched
+      });
+    }
+  }
+
+  Future<void> loadRegularServices(String categoryName) async {
+    try {
       final categorySnapshot = await _firestore
           .collection('Category')
           .where('Name', isEqualTo: categoryName)
@@ -63,8 +162,6 @@ class _ExplorePageState extends State<ExplorePage> {
       if (categorySnapshot.docs.isEmpty) return;
 
       final categoryId = categorySnapshot.docs.first.id;
-
-      // Get Services by CategoryID
       final serviceSnapshot = await _firestore
           .collection('Service')
           .where('CategoryID', isEqualTo: categoryId)
@@ -76,7 +173,6 @@ class _ExplorePageState extends State<ExplorePage> {
         final data = doc.data();
         final serviceId = doc.id;
 
-        // Get address
         String? street;
         if (data['AddressID'] != null) {
           final addressDoc = await _firestore
@@ -86,7 +182,6 @@ class _ExplorePageState extends State<ExplorePage> {
           street = addressDoc.data()?['Street'] ?? 'Unknown Street';
         }
 
-        // Get image
         String? imageUrl;
         final imageSnapshot = await _firestore
             .collection('Service Images')
@@ -113,6 +208,10 @@ class _ExplorePageState extends State<ExplorePage> {
       });
     } catch (e) {
       debugPrint('Error loading services: $e');
+    } finally {
+      setState(() {
+        _isLoading = false; // End loading after regular services are fetched
+      });
     }
   }
 
@@ -127,22 +226,16 @@ class _ExplorePageState extends State<ExplorePage> {
         .get();
 
     if (wishlistSnapshot.docs.isEmpty) {
-      // Add to wishlist
       await _firestore.collection('wishlists').add({
         'serviceId': serviceId,
         'userId': userId,
         'createdAt': FieldValue.serverTimestamp(),
       });
-
-      // Update heart color to red
       setState(() {
         _favoriteStatus[serviceId] = true;
       });
     } else {
-      // Remove from wishlist
       await wishlistSnapshot.docs.first.reference.delete();
-
-      // Update heart color back to default
       setState(() {
         _favoriteStatus[serviceId] = false;
       });
@@ -152,24 +245,21 @@ class _ExplorePageState extends State<ExplorePage> {
   void _onItemTapped(int index) {
     if (index == 1) {
       Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const WishlistPage()),
-      );
+          context, MaterialPageRoute(builder: (_) => const WishlistPage()));
     } else if (index == 2) {
       Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const MessagesPage()),
-      );
+          context, MaterialPageRoute(builder: (_) => const MessagesPage()));
     } else if (index == 3) {
       Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ProfilePage()),
-      );
+          context, MaterialPageRoute(builder: (_) => const ProfilePage()));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.themeMode == ThemeMode.dark;
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -182,12 +272,20 @@ class _ExplorePageState extends State<ExplorePage> {
               borderSide: BorderSide.none,
             ),
             filled: true,
-            fillColor: Colors.grey[200],
           ),
           onChanged: (value) => setState(() => _searchQuery = value),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(
+              isDark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+              color: isDark ? Colors.amber : Colors.indigo,
+            ),
+            onPressed: () => themeProvider.toggleTheme(!isDark),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -212,7 +310,7 @@ class _ExplorePageState extends State<ExplorePage> {
                               : Colors.grey[200],
                         ),
                         child: Material(
-                          type: MaterialType.transparency,
+                          color: Colors.transparent,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(20),
                             onTap: () {
@@ -245,24 +343,40 @@ class _ExplorePageState extends State<ExplorePage> {
                 Divider(height: 1, color: Colors.grey[300]),
               ],
             ),
+          if (_isLoading) // Display loading indicator when fetching data
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 20),
+                  Text("Please wait a moment..."),
+                ],
+              ),
+            ),
+          if (!_isLoading && _services.isEmpty)
+            Center(
+              child: Text(
+                _selectedCategory == 'Offers'
+                    ? "No offers available."
+                    : "No services available.",
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
           Expanded(
-            child: _services.isEmpty
-                ? const Center(child: Text("No services available."))
-                : ListView.builder(
+            child: !_isLoading && _services.isNotEmpty
+                ? ListView.builder(
                     itemCount: _services.length,
                     itemBuilder: (context, index) {
                       final service = _services[index];
                       final serviceId = service['id'];
-
-                      // Check if the service is already in the wishlist
-                      bool isFavorite = _favoriteStatus[serviceId] ?? false;
+                      final isFavorite = _favoriteStatus[serviceId] ?? false;
 
                       return Card(
                         margin: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                            borderRadius: BorderRadius.circular(16)),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -272,29 +386,38 @@ class _ExplorePageState extends State<ExplorePage> {
                                   ClipRRect(
                                     borderRadius: const BorderRadius.vertical(
                                         top: Radius.circular(16)),
-                                    child: Image.network(
-                                      service['imageUrl'],
+                                    child: CachedNetworkImage(
+                                      imageUrl: service['imageUrl'],
                                       height: 220,
                                       width: double.infinity,
                                       fit: BoxFit.cover,
+                                      placeholder: (context, url) =>
+                                          const Center(
+                                              child:
+                                                  CircularProgressIndicator()),
+                                      errorWidget: (context, url, error) =>
+                                          const Icon(Icons.error),
                                     ),
                                   ),
-                                Positioned(
-                                  top: 10,
-                                  right: 10,
-                                  child: GestureDetector(
-                                    onTap: () => toggleFavorite(serviceId),
-                                    child: CircleAvatar(
-                                      backgroundColor: Colors.white,
-                                      child: Icon(
-                                        isFavorite
-                                            ? Icons.favorite
-                                            : Icons.favorite_border,
-                                        color: isFavorite ? Colors.red : Colors.black,
+                                if (_selectedCategory != 'Offers')
+                                  Positioned(
+                                    top: 10,
+                                    right: 10,
+                                    child: GestureDetector(
+                                      onTap: () => toggleFavorite(serviceId),
+                                      child: CircleAvatar(
+                                        backgroundColor: Colors.white,
+                                        child: Icon(
+                                          isFavorite
+                                              ? Icons.favorite
+                                              : Icons.favorite_border,
+                                          color: isFavorite
+                                              ? Colors.red
+                                              : Colors.black,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
                               ],
                             ),
                             Padding(
@@ -305,31 +428,22 @@ class _ExplorePageState extends State<ExplorePage> {
                                   Text(
                                     '${_selectedCategory ?? "Home"} in ${service['street'] ?? "Unknown"}',
                                     style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     service['description'] ?? 'No description',
                                     style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black87,
-                                    ),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold),
                                   ),
                                   const SizedBox(height: 4),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        '${service['price']}\$ per night',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ],
+                                  Text(
+                                    '${service['price']}\$ per night',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15),
                                   ),
                                 ],
                               ),
@@ -338,7 +452,8 @@ class _ExplorePageState extends State<ExplorePage> {
                         ),
                       );
                     },
-                  ),
+                  )
+                : Container(),
           ),
         ],
       ),

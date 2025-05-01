@@ -9,13 +9,13 @@ import 'address.dart';
 class ServiceFormPage extends StatefulWidget {
   final String categoryId;
   final String userId;
-  final String selectedType; // Add selectedType to the constructor
+  final String selectedType;
 
   const ServiceFormPage({
     super.key,
     required this.categoryId,
     required this.userId,
-    required this.selectedType, // Initialize selectedType here
+    required this.selectedType,
   });
 
   @override
@@ -29,7 +29,6 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
 
   bool isAvailable = true;
   List<File> imageFiles = [];
-
   bool isLoading = false;
 
   Future<void> pickImages() async {
@@ -53,13 +52,12 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
       return;
     }
 
-    setState(() => isLoading = true); // Show the loading indicator
+    setState(() => isLoading = true);
 
     try {
       final serviceRef = FirebaseFirestore.instance.collection('Service').doc();
       final serviceId = serviceRef.id;
 
-      // Store service details
       await serviceRef.set({
         'Price': double.parse(priceController.text),
         'Availability': isAvailable,
@@ -67,10 +65,9 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
         'CategoryID': widget.categoryId,
         'UserID': widget.userId,
         'AddressID': null,
-        'Type': widget.selectedType, // Store selectedType
+        'Type': widget.selectedType,
       });
 
-      // Upload images to Firebase Storage & save URLs
       for (int i = 0; i < imageFiles.length; i++) {
         final ref = FirebaseStorage.instance
             .ref()
@@ -85,16 +82,14 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
         });
       }
 
-      // Now set isLoading to false before navigation
       setState(() => isLoading = false);
 
-      // Navigate to AddressFormPage directly
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => AddressFormPage(
             serviceId: serviceId,
-            type: widget.selectedType, // Pass selectedType to the next screen
+            type: widget.selectedType,
           ),
         ),
       );
@@ -122,8 +117,16 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
                       controller: priceController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(labelText: "Price"),
-                      validator: (value) =>
-                          value == null || value.isEmpty ? "Enter price per night" : null,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Enter price per night";
+                        }
+                        final price = double.tryParse(value);
+                        if (price == null || price <= 0) {
+                          return "Enter a valid positive price";
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
@@ -134,12 +137,6 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
                       validator: (value) => value == null || value.isEmpty
                           ? "Enter description"
                           : null,
-                    ),
-                    const SizedBox(height: 10),
-                    SwitchListTile(
-                      value: isAvailable,
-                      onChanged: (val) => setState(() => isAvailable = val),
-                      title: const Text("Available?"),
                     ),
                     const SizedBox(height: 10),
                     ElevatedButton.icon(

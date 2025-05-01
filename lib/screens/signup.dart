@@ -193,113 +193,115 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: ModalProgressHUD(
-        inAsyncCall: showspinner,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(height: 50),
-                Text("Sign Up",
-                    style: TextStyle(
-                        fontSize: 50,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.indigo)),
-                SizedBox(height: 30),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.purple.shade50,
-                      backgroundImage: _selectedImage != null
-                          ? FileImage(_selectedImage!)
-                          : null,
-                      child: _selectedImage == null
-                          ? Icon(Icons.person, size: 50, color: Colors.indigo)
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: -15,
-                      right: -17,
-                      child: IconButton(
-                        icon: Icon(Icons.add, size: 40, color: Colors.black),
-                        onPressed: _pickImage,
+    return Theme(
+      data: ThemeData.light(),
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          backgroundColor: Colors.white10,
+          title: Text("Sign Up"),
+          centerTitle: true,
+        ),
+        body: ModalProgressHUD(
+          inAsyncCall: showspinner,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(height: 20),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.purple.shade50,
+                        backgroundImage: _selectedImage != null
+                            ? FileImage(_selectedImage!)
+                            : null,
+                        child: _selectedImage == null
+                            ? Icon(Icons.person, size: 50, color: Colors.indigo)
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: -15,
+                        right: -17,
+                        child: IconButton(
+                          icon: Icon(Icons.add, size: 40, color: Colors.black),
+                          onPressed: _pickImage,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 10),
+                  _buildTextField(
+                      _usernameController, "Enter your username", Icons.person),
+                  _buildTextField(
+                      _emailController, "Enter your email", Icons.mail),
+                  _buildTextField(
+                      _passwordController, "Enter your password", Icons.lock,
+                      isPassword: true),
+                  _buildTextField(_confirmPasswordController,
+                      "Confirm your password", Icons.lock,
+                      isPassword: true),
+                  _buildTextField(_addressController, "Enter your address",
+                      Icons.location_on),
+                  IntlPhoneField(
+                    controller: _phoneController,
+                    decoration: InputDecoration(
+                      hintText: "Enter your phone number",
+                      prefixIcon: Icon(Icons.phone, color: Colors.indigo),
+                      filled: true,
+                      fillColor: Colors.white70,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: Colors.indigo,
+                          width: 1.0,
+                        ),
                       ),
                     ),
-                  ],
-                ),
-                SizedBox(height: 10),
-                _buildTextField(
-                    _usernameController, "Enter your username", Icons.person),
-                _buildTextField(
-                    _emailController, "Enter your email", Icons.mail),
-                _buildTextField(
-                    _passwordController, "Enter your password", Icons.lock,
-                    isPassword: true),
-                _buildTextField(_confirmPasswordController,
-                    "Confirm your password", Icons.lock,
-                    isPassword: true),
-                // Replace this with IntlPhoneField
+                    initialCountryCode: 'LB',
+                    onChanged: (phone) {
+                      setState(() {
+                        phoneNumber = phone.completeNumber;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 30),
+                  ElevatedButton(
+                    onPressed: () async {
+                      setState(() {
+                        showspinner = true;
+                      });
 
-                _buildTextField(_addressController, "Enter your address",
-                    Icons.location_on),
-                IntlPhoneField(
-                  controller: _phoneController,
-                  decoration: InputDecoration(
-                    hintText: "Enter your phone number",
-                    prefixIcon: Icon(Icons.phone,
-                        color: Colors.indigo), // Prefix icon like the others
-                    filled: true,
-                    fillColor: Colors.white70, // Set background to white
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                          10), // Rounded corners like the other fields
-                      borderSide: BorderSide(
-                        color: Colors.indigo, // Border color
-                        width: 1.0, // Border width
-                      ),
+                      await _signUp();
+
+                      setState(() {
+                        showspinner = false;
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                     ),
+                    child: Text("Sign Up",
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white)),
                   ),
-                  initialCountryCode: 'LB',
-                  onChanged: (phone) {
-                    setState(() {
-                      phoneNumber = phone.completeNumber;
-                    });
-                  },
-                ),
-                SizedBox(height: 30),
-                ElevatedButton(
-                  onPressed: () async {
-                    setState(() {
-                      showspinner = true; // Show spinner before sign up process
-                    });
-
-                    await _signUp(); // Perform the sign-up operation
-
-                    setState(() {
-                      showspinner = false; // Hide spinner after sign up attempt
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20)),
-                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                  ),
-                  child: Text("Sign Up",
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white)),
-                ),
-
-                SizedBox(height: 20),
-              ],
+                  SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         ),

@@ -80,8 +80,6 @@ class _ProfilePageState extends State<ProfilePage> {
           'Profile',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 35),
         ),
-        backgroundColor: Colors.white,
-        elevation: 0,
         centerTitle: false,
       ),
       body: FutureBuilder<Map<String, dynamic>>(
@@ -175,7 +173,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     });
                   },
                 ),
-                
                 const Divider(indent: 15, endIndent: 15, color: Colors.black),
               ] else if (userData["role"] == "Premium Host") ...[
                 ListTile(

@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
-import 'profile.dart'; 
+import 'profile.dart';
 
 class EditProfile extends StatefulWidget {
   const EditProfile({super.key});
@@ -43,7 +43,14 @@ class _EditProfileState extends State<EditProfile> {
       if (userData.exists) {
         setState(() {
           _usernameController.text = userData['username'] ?? '';
-          _phoneController.text = userData['phone'] ?? '';
+          String fullPhone = userData['phone'] ?? '';
+          if (fullPhone.startsWith(_selectedCountryCode)) {
+            _phoneController.text =
+                fullPhone.replaceFirst(_selectedCountryCode, '').trim();
+          } else {
+            _phoneController.text = fullPhone;
+          }
+
           _profileImageUrl = userData['image_url'];
           _isLoading = false;
         });
@@ -87,7 +94,10 @@ class _EditProfileState extends State<EditProfile> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Profile updated successfully!"),backgroundColor: Colors.green,),
+      SnackBar(
+        content: Text("Profile updated successfully!"),
+        backgroundColor: Colors.green,
+      ),
     );
   }
 
@@ -108,7 +118,6 @@ class _EditProfileState extends State<EditProfile> {
           'Edit Profile',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),
         ),
-        backgroundColor: Colors.white,
         elevation: 0,
       ),
       body: _isLoading
@@ -183,7 +192,6 @@ class _EditProfileState extends State<EditProfile> {
                     },
                   ),
 
-                  
                   SizedBox(height: 30),
 
                   // Save Button

@@ -74,8 +74,6 @@ class _SelectState extends State<Select> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Category'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
         elevation: 0,
       ),
       body: Padding(

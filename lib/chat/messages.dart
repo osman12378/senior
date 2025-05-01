@@ -39,7 +39,6 @@ class _MyWidgetState extends State<MessagesPage> {
           'messages page',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 35),
         ),
-        backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
       ),

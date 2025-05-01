@@ -1,23 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'package:senior/pages/second_page.dart';
-
+import 'theme_provider.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Ensures Flutter is ready
-  await Firebase.initializeApp(); // Initialize Firebase
-  runApp(MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return MaterialApp(
       title: 'RentX',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.indigo,
+        brightness: Brightness.light,
       ),
+      darkTheme: ThemeData(
+        primarySwatch: Colors.indigo,
+        brightness: Brightness.dark,
+      ),
+      themeMode: themeProvider.themeMode,
       home: SplashScreen(),
     );
   }
@@ -32,7 +48,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 2), () {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => SecondPage()),
@@ -42,6 +58,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -53,10 +71,9 @@ class _SplashScreenState extends State<SplashScreen> {
                 Text(
                   'Rent',
                   style: TextStyle(
-                    fontSize: 96,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
+                      fontSize: 96,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black),
                 ),
                 Text(
                   'X',
@@ -78,12 +95,9 @@ class _SplashScreenState extends State<SplashScreen> {
                 children: <Widget>[
                   Text(
                     'from',
-                    style: TextStyle(
-                      fontSize: 24,
-                      color: Colors.black,
-                    ),
+                    style: TextStyle(fontSize: 24, color: Colors.white70),
                   ),
-                  SizedBox(height: 5),
+                  const SizedBox(height: 5),
                   Text(
                     'LIU Students',
                     style: TextStyle(

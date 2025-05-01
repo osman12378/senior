@@ -42,7 +42,7 @@ class SubscriptionPage extends StatelessWidget {
                 price: data['amount'].toString(),
                 description: data['description'] ?? '',
                 amount: data['amount'] ?? 0,
-                subscriptionId: doc.id, 
+                subscriptionId: doc.id,
               );
 
               ;

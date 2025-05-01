@@ -83,156 +83,160 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: ModalProgressHUD(
-        inAsyncCall: showspinner,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 40.0),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  'Log In',
-                  style: TextStyle(
-                    fontSize: 45,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.indigo,
+    return Theme(
+      data: ThemeData.light(),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: ModalProgressHUD(
+          inAsyncCall: showspinner,
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 20.0, vertical: 40.0),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Log In',
+                    style: TextStyle(
+                      fontSize: 45,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.indigo,
+                    ),
                   ),
-                ),
-                SizedBox(height: 150),
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      // Email Input
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: InputDecoration(
-                          labelText: 'Enter your email',
-                          suffixIcon:
-                              Icon(Icons.mail, color: Colors.black, size: 30),
-                          filled: true,
-                          fillColor: Colors.grey[200],
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter an email';
-                          }
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: 40),
-                      // Password Input
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscureText,
-                        decoration: InputDecoration(
-                          labelText: 'Enter your password',
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureText
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: Colors.black,
-                              size: 30,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscureText = !_obscureText;
-                              });
-                            },
+                  SizedBox(height: 150),
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        // Email Input
+                        TextFormField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            labelText: 'Enter your email',
+                            suffixIcon:
+                                Icon(Icons.mail, color: Colors.black, size: 30),
+                            filled: true,
+                            fillColor: Colors.grey[200],
+                            border: OutlineInputBorder(),
                           ),
-                          filled: true,
-                          fillColor: Colors.grey[200],
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => ResetPasswordPage()),
-                            );
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter an email';
+                            }
+                            return null;
                           },
-                          child: Text(
-                            'Forgot password?',
-                            style: TextStyle(
-                              color: Colors.indigo,
-                              fontWeight: FontWeight.bold,
+                        ),
+                        SizedBox(height: 40),
+                        // Password Input
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: _obscureText,
+                          decoration: InputDecoration(
+                            labelText: 'Enter your password',
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureText
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: Colors.black,
+                                size: 30,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscureText = !_obscureText;
+                                });
+                              },
                             ),
+                            filled: true,
+                            fillColor: Colors.grey[200],
+                            border: OutlineInputBorder(),
                           ),
                         ),
-                      ),
-                      SizedBox(height: 20),
 
-                      // Login Button (GestureDetector instead of ElevatedButton)
-                      GestureDetector(
-                        onTap: () async {
-                          setState(() {
-                            showspinner = true; // Show spinner
-                          });
-
-                          await signIn(); // Perform the sign-in operation
-
-                          setState(() {
-                            showspinner =
-                                false; // Hide spinner after sign-in attempt
-                          });
-                        },
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 30, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.indigo,
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Center(
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => ResetPasswordPage()),
+                              );
+                            },
                             child: Text(
-                              'Log In',
+                              'Forgot password?',
                               style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.white,
+                                color: Colors.indigo,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                         ),
-                      ),
+                        SizedBox(height: 20),
 
-                      SizedBox(height: 35),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text("Don't have an account?"),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => SignUpPage()),
-                              );
-                            },
-                            child: Text(
-                              'Sign Up',
-                              style: TextStyle(
+                        // Login Button (GestureDetector instead of ElevatedButton)
+                        GestureDetector(
+                          onTap: () async {
+                            setState(() {
+                              showspinner = true; // Show spinner
+                            });
+
+                            await signIn(); // Perform the sign-in operation
+
+                            setState(() {
+                              showspinner =
+                                  false; // Hide spinner after sign-in attempt
+                            });
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.indigo,
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Log In',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.indigo),
+                                ),
+                              ),
                             ),
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+
+                        SizedBox(height: 35),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text("Don't have an account?"),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => SignUpPage()),
+                                );
+                              },
+                              child: Text(
+                                'Sign Up',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.indigo),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

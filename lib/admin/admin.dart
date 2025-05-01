@@ -50,51 +50,54 @@ class _AdminPageState extends State<AdminPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-            _titles[_selectedIndex]), // Change title based on selected index
-        automaticallyImplyLeading: false,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.exit_to_app),
-            color: Colors.red,
-            onPressed:
-                _logout, // Call the logout function when the button is pressed
-          ),
-        ],
-      ),
-      body: Container(
-        color: Colors.white, // Set the background color to white
-        child: _pages[
-            _selectedIndex], // Display the appropriate page based on the index
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: Colors.indigo,
-        unselectedItemColor: Colors.black,
-        type: BottomNavigationBarType.fixed,
-        iconSize: 30,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.pending),
-            label: 'Pending',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.cancel),
-            label: 'Rejected',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.check_circle),
-            label: 'Approved',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Manage Users',
-          ),
-        ],
+    return Theme(
+      data: ThemeData.light(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+              _titles[_selectedIndex]), // Change title based on selected index
+          automaticallyImplyLeading: false,
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: Icon(Icons.exit_to_app),
+              color: Colors.red,
+              onPressed:
+                  _logout, // Call the logout function when the button is pressed
+            ),
+          ],
+        ),
+        body: Container(
+          color: Colors.white, // Set the background color to white
+          child: _pages[
+              _selectedIndex], // Display the appropriate page based on the index
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          selectedItemColor: Colors.indigo,
+          unselectedItemColor: Colors.black,
+          type: BottomNavigationBarType.fixed,
+          iconSize: 30,
+          items: [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.pending),
+              label: 'Pending',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.cancel),
+              label: 'Rejected',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.check_circle),
+              label: 'Approved',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people),
+              label: 'Manage Users',
+            ),
+          ],
+        ),
       ),
     );
   }

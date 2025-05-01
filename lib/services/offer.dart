@@ -44,38 +44,27 @@ class _OfferPageState extends State<OfferPage> {
         .get();
 
     final services = servicesQuery.docs;
+    final serviceIds = services.map((s) => s.id).toList();
 
-    // Fetch active offers for services
-    final activeOffersQuery = await _firestore
+    final offersQuery = await _firestore
         .collection('Offer')
-        .where('serviceID',
-            whereIn: services.map((service) => service.id).toList())
+        .where('serviceID', whereIn: serviceIds)
         .get();
 
-    final activeServiceIds = activeOffersQuery.docs
-        .where((offer) {
-          final endTime = offer['endTime'].toDate() as DateTime;
-          final availability =
-              offer['availability'] as bool; // Availability as bool
+    final now = DateTime.now();
 
-          // If endTime is before the current time, set availability to false
-          if (endTime.isBefore(DateTime.now()) && availability == true) {
-            // Update Firestore to set availability to false
-            _firestore.collection('Offer').doc(offer.id).update({
-              'availability':
-                  false, // Set availability to false after the end date
-            });
-            return false; // Exclude this offer from the list
-          }
-          return availability ==
-              false; // Show only offers with availability false
-        })
-        .map((offer) => offer['serviceID'] as String)
-        .toList();
+    final activeOfferServiceIds = <String>{};
+
+    for (final offer in offersQuery.docs) {
+      final endTime = (offer['endTime'] as Timestamp).toDate();
+      if (endTime.isAfter(now)) {
+        activeOfferServiceIds.add(offer['serviceID']);
+      }
+    }
 
     setState(() {
       userServices = services.where((service) {
-        return !activeServiceIds.contains(service.id);
+        return !activeOfferServiceIds.contains(service.id);
       }).toList();
     });
   }
@@ -138,17 +127,22 @@ class _OfferPageState extends State<OfferPage> {
     setState(() => _isLoading = true);
 
     try {
-      double price = double.parse(_priceController.text);
+      double? price = double.tryParse(_priceController.text);
+      if (price == null || price <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enter a valid price greater than 0')),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
 
       await _firestore.collection('Offer').add({
         'serviceID': selectedService!.id,
         'price': price,
-        'availability': true, // Save availability as true initially
         'createdAt': Timestamp.now(),
         'endTime': Timestamp.fromDate(endTime),
       });
 
-      // Remove the selected service from the list immediately after the offer is submitted
       setState(() {
         userServices.remove(selectedService);
         selectedService = null;

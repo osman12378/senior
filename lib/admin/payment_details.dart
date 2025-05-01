@@ -10,7 +10,7 @@ class PaymentDetailsPage extends StatelessWidget {
   final String paymentImageUrl;
   final String userId;
   final String status;
-  final String subscriptionId; // <-- add this
+  final String subscriptionId;
 
   const PaymentDetailsPage({
     Key? key,
@@ -21,7 +21,7 @@ class PaymentDetailsPage extends StatelessWidget {
     required this.paymentImageUrl,
     required this.userId,
     required this.status,
-    required this.subscriptionId, // <-- add this
+    required this.subscriptionId,
   }) : super(key: key);
 
   void updateStatus(BuildContext context, String newStatus) async {
@@ -82,76 +82,119 @@ class PaymentDetailsPage extends StatelessWidget {
         ? profilePicUrl
         : 'https://via.placeholder.com/150';
 
-    return Scaffold(
-      appBar: AppBar(title: Text("Payment Review")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.grey[300],
-              child: ClipOval(
-                child: finalProfileUrl.startsWith('http')
-                    ? CachedNetworkImage(
-                        imageUrl: finalProfileUrl,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorWidget: (context, url, error) => Image.asset(
-                          'assets/default_avatar.jpg',
+    return Theme(
+      data: ThemeData.light(),
+      child: Scaffold(
+        appBar: AppBar(title: Text("Payment Review")),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.grey[300],
+                child: ClipOval(
+                  child: finalProfileUrl.startsWith('http')
+                      ? CachedNetworkImage(
+                          imageUrl: finalProfileUrl,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => Image.asset(
+                            'assests/default_avatar.jpg',
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Image.asset(
+                          'assests/default_avatar.jpg',
                           width: 80,
                           height: 80,
                           fit: BoxFit.cover,
                         ),
-                      )
-                    : Image.asset(
-                        'assests/default_avatar.jpg',
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                      ),
+                ),
               ),
-            ),
-            SizedBox(height: 10),
-            Text(username, style: TextStyle(fontSize: 18)),
-            Text(email, style: TextStyle(color: Colors.grey)),
-            SizedBox(height: 20),
-            Text("Payment Image",
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            CachedNetworkImage(
-              imageUrl: paymentImageUrl,
-              height: 200,
-              placeholder: (context, url) => CircularProgressIndicator(),
-              errorWidget: (context, url, error) => Icon(Icons.error),
-            ),
-            SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (status == 'pending')
-                  ElevatedButton(
-                    onPressed: () => approvePayment(context),
-                    child: Text('Approve'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.black, // <-- text color black
+              SizedBox(height: 10),
+              Text(username, style: TextStyle(fontSize: 18)),
+              Text(email, style: TextStyle(color: Colors.grey)),
+              SizedBox(height: 20),
+              Text("Payment Image",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 10),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FullScreenImage(imageUrl: paymentImageUrl),
                     ),
-                  ),
-                if ((status == 'pending')) SizedBox(width: 10),
-                if (status == 'pending')
-                  ElevatedButton(
-                    onPressed: () => rejectPayment(context),
-                    child: Text('Reject'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.black, // <-- text color black
+                  );
+                },
+                child: CachedNetworkImage(
+                  imageUrl: paymentImageUrl,
+                  height: 200,
+                  placeholder: (context, url) => CircularProgressIndicator(),
+                  errorWidget: (context, url, error) => Icon(Icons.error),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (status == 'pending')
+                    ElevatedButton(
+                      onPressed: () => approvePayment(context),
+                      child: Text('Approve'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.black,
+                      ),
                     ),
-                  ),
-              ],
-            ),
-          ],
+                  if (status == 'pending') SizedBox(width: 10),
+                  if (status == 'pending')
+                    ElevatedButton(
+                      onPressed: () => rejectPayment(context),
+                      child: Text('Reject'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.black,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ----------------------------
+// Full Screen Image Viewer
+// ----------------------------
+class FullScreenImage extends StatelessWidget {
+  final String imageUrl;
+
+  const FullScreenImage({Key? key, required this.imageUrl}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: IconThemeData(color: Colors.white),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          child: CachedNetworkImage(
+            imageUrl: imageUrl,
+            placeholder: (context, url) => CircularProgressIndicator(),
+            errorWidget: (context, url, error) =>
+                Icon(Icons.error, color: Colors.white),
+          ),
         ),
       ),
     );

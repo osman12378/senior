@@ -26,7 +26,7 @@ class Fourthpage extends StatelessWidget {
                 color: Colors.indigo, // Purple color
               ),
             ),
-            SizedBox(height: 40), // Add some spacing
+            SizedBox(height: 15), // Add some spacing
             // Body text as a single block
             RichText(
               textAlign: TextAlign.center,
@@ -83,5 +83,3 @@ class Fourthpage extends StatelessWidget {
     );
   }
 }
-
-      

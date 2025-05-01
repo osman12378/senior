@@ -38,12 +38,10 @@ class _MyWidgetState extends State<WishlistPage> {
       List<Map<String, dynamic>> wishlistItems = [];
       for (var doc in snapshot.docs) {
         final serviceId = doc['ServiceID'];
-        
+
         // Fetch the service details based on the serviceId
-        final serviceSnapshot = await _firestore
-            .collection('Service')
-            .doc(serviceId)
-            .get();
+        final serviceSnapshot =
+            await _firestore.collection('Service').doc(serviceId).get();
 
         if (serviceSnapshot.exists) {
           final serviceData = serviceSnapshot.data()!;
@@ -127,7 +125,6 @@ class _MyWidgetState extends State<WishlistPage> {
           'Wishlist',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 35),
         ),
-        backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
       ),
@@ -138,7 +135,8 @@ class _MyWidgetState extends State<WishlistPage> {
               itemBuilder: (context, index) {
                 final service = _wishlist[index];
                 return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  margin:
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -187,7 +185,8 @@ class _MyWidgetState extends State<WishlistPage> {
                               children: [
                                 IconButton(
                                   icon: const Icon(Icons.delete),
-                                  onPressed: () => _removeFromWishlist(service['id']),
+                                  onPressed: () =>
+                                      _removeFromWishlist(service['id']),
                                 ),
                               ],
                             ),
