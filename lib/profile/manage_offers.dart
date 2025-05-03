@@ -49,6 +49,7 @@ class _ManageOffersState extends State<ManageOffers> {
       QuerySnapshot offerSnapshot = await FirebaseFirestore.instance
           .collection('Offer')
           .where('serviceID', whereIn: serviceIds)
+          .where('Availibility', isEqualTo: true) // Use correct field name
           .get();
 
       List<Map<String, dynamic>> fetchedOffers = [];
@@ -76,6 +77,7 @@ class _ManageOffersState extends State<ManageOffers> {
           'endTime': (offerDoc['endTime'] as Timestamp).toDate(),
           'imageUrl': imageUrl,
           'serviceId': serviceId,
+          'Availibility': offerDoc['Availibility'], // Correct field
         });
       }
 
@@ -88,6 +90,17 @@ class _ManageOffersState extends State<ManageOffers> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> deleteOffer(String offerId) async {
+    try {
+      await FirebaseFirestore.instance.collection('Offer').doc(offerId).update({
+        'Availibility': false,
+      });
+      fetchUserOffers(); // Refresh list after deletion
+    } catch (e) {
+      print('Error deleting offer: $e');
     }
   }
 
@@ -117,13 +130,48 @@ class _ManageOffersState extends State<ManageOffers> {
                       ),
                       title: Text(offer['serviceDescription']),
                       subtitle: Text('Price: \$${offer['price']}'),
-                      trailing: Text(
-                        isExpired ? 'Expired' : 'Active',
-                        style: TextStyle(
-                          color: isExpired ? Colors.red : Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (!isExpired)
+                            IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    title: Text('Confirm Deletion'),
+                                    content: Text(
+                                        'Are you sure you want to delete this offer?'),
+                                    actions: [
+                                      TextButton(
+                                        child: Text('Cancel'),
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(),
+                                      ),
+                                      TextButton(
+                                        child: Text('Yes'),
+                                        onPressed: () {
+                                          Navigator.of(context)
+                                              .pop(); // Close the dialog
+                                          deleteOffer(offer[
+                                              'offerId']); // Proceed with deletion
+                                        },
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          Text(
+                            isExpired ? 'Expired' : 'Active',
+                            style: TextStyle(
+                              color: isExpired ? Colors.red : Colors.green,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
                       ),
                       onTap: () {
                         Navigator.push(
