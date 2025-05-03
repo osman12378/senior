@@ -31,13 +31,13 @@ class _MyWidgetState extends State<WishlistPage> {
 
     try {
       final snapshot = await _firestore
-          .collection('Wishlist')
-          .where('UserID', isEqualTo: userId)
+          .collection('wishlists')
+          .where('userId', isEqualTo: userId)
           .get();
 
       List<Map<String, dynamic>> wishlistItems = [];
       for (var doc in snapshot.docs) {
-        final serviceId = doc['ServiceID'];
+        final serviceId = doc['serviceId'];
 
         // Fetch the service details based on the serviceId
         final serviceSnapshot =
@@ -82,9 +82,9 @@ class _MyWidgetState extends State<WishlistPage> {
 
     try {
       final snapshot = await _firestore
-          .collection('Wishlist')
-          .where('ServiceID', isEqualTo: serviceId)
-          .where('UserID', isEqualTo: userId)
+          .collection('wishlists')
+          .where('serviceId', isEqualTo: serviceId)
+          .where('userId', isEqualTo: userId)
           .get();
 
       if (snapshot.docs.isNotEmpty) {
@@ -125,6 +125,7 @@ class _MyWidgetState extends State<WishlistPage> {
           'Wishlist',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 35),
         ),
+        backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
       ),

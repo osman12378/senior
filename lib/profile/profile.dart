@@ -6,6 +6,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:senior/after_login/wishlist.dart';
 import 'package:senior/after_login/Explore.dart';
 import 'package:senior/chat/messages.dart';
+import 'package:senior/profile/manage_offers.dart';
+import 'package:senior/profile/manage_services.dart';
 import 'package:senior/screens/login.dart';
 import 'package:senior/profile/change_password.dart';
 import 'package:senior/profile/edit_profile.dart';
@@ -138,6 +140,7 @@ class _ProfilePageState extends State<ProfilePage> {
               const Divider(indent: 15, endIndent: 15, color: Colors.black),
 
               // Role-based UI section
+              // Role-based UI section
               if (userData["role"] == "renter") ...[
                 ListTile(
                   title: const Text("   Become a host"),
@@ -151,11 +154,22 @@ class _ProfilePageState extends State<ProfilePage> {
                   },
                 ),
                 const Divider(indent: 15, endIndent: 15, color: Colors.black),
-              ] else if (userData["role"] == "Host") ...[
+              ] else if (userData["role"] == "Host" ||
+                  userData["role"] == "Premium Host") ...[
                 ListTile(
                   title: const Text("   Manage bookings"),
                   trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ManageOffers()),
+                    ).then((_) {
+                      // This runs when you come back from ServicePage
+                      setState(() {
+                        _userData = getUserData(); // refresh user data
+                      });
+                    });
+                  },
                 ),
                 const Divider(indent: 15, endIndent: 15, color: Colors.black),
                 ListTile(
@@ -174,20 +188,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   },
                 ),
                 const Divider(indent: 15, endIndent: 15, color: Colors.black),
-              ] else if (userData["role"] == "Premium Host") ...[
                 ListTile(
-                  title: const Text("   Manage bookings"),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {},
-                ),
-                const Divider(indent: 15, endIndent: 15, color: Colors.black),
-                ListTile(
-                  title: const Text("   RentX a service"),
+                  title: const Text("   Manage Service"),
                   trailing: const Icon(Icons.arrow_forward_ios),
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => Select()),
+                      MaterialPageRoute(builder: (_) => ManageServicesPage()),
                     ).then((_) {
                       // This runs when you come back from ServicePage
                       setState(() {
@@ -197,22 +204,40 @@ class _ProfilePageState extends State<ProfilePage> {
                   },
                 ),
                 const Divider(indent: 15, endIndent: 15, color: Colors.black),
-                ListTile(
-                  title: const Text("   RentX an offer"),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => OfferPage()),
-                    ).then((_) {
-                      // This runs when you come back from ServicePage
-                      setState(() {
-                        _userData = getUserData(); // refresh user data
+                if (userData["role"] == "Premium Host") ...[
+                  ListTile(
+                    title: const Text("   RentX an offer"),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => OfferPage()),
+                      ).then((_) {
+                        // This runs when you come back from ServicePage
+                        setState(() {
+                          _userData = getUserData(); // refresh user data
+                        });
                       });
-                    });
-                  },
-                ),
-                const Divider(indent: 15, endIndent: 15, color: Colors.black),
+                    },
+                  ),
+                  const Divider(indent: 15, endIndent: 15, color: Colors.black),
+                  ListTile(
+                    title: const Text("   Manage Offer"),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => ManageOffers()),
+                      ).then((_) {
+                        // This runs when you come back from ServicePage
+                        setState(() {
+                          _userData = getUserData(); // refresh user data
+                        });
+                      });
+                    },
+                  ),
+                  const Divider(indent: 15, endIndent: 15, color: Colors.black),
+                ],
               ],
 
               ListTile(

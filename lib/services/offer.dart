@@ -43,7 +43,10 @@ class _OfferPageState extends State<OfferPage> {
         .where('UserID', isEqualTo: userId)
         .get();
 
-    final services = servicesQuery.docs;
+    final services = servicesQuery.docs.where((doc) {
+      return doc.data().containsKey('Deleted') ? doc['Deleted'] == false : true;
+    }).toList();
+
     final serviceIds = services.map((s) => s.id).toList();
 
     final offersQuery = await _firestore
@@ -141,6 +144,7 @@ class _OfferPageState extends State<OfferPage> {
         'price': price,
         'createdAt': Timestamp.now(),
         'endTime': Timestamp.fromDate(endTime),
+        'Availibility': true,
       });
 
       setState(() {

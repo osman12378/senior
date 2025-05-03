@@ -66,6 +66,7 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
         'UserID': widget.userId,
         'AddressID': null,
         'Type': widget.selectedType,
+        'Deleted': false,
       });
 
       for (int i = 0; i < imageFiles.length; i++) {

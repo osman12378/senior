@@ -89,11 +89,13 @@ class _ExplorePageState extends State<ExplorePage> {
 
   Future<void> loadOffers() async {
     try {
-      final now = Timestamp.now();
-
+      final now = Timestamp.fromDate(DateTime.now()); // Get current time
+      // Fetch all offers where the endTime is greater than the current time
       final offerSnapshot = await _firestore
           .collection('Offer')
           .where('endTime', isGreaterThan: now)
+          .orderBy('endTime',
+              descending: true) // Sort offers by endTime in descending order
           .get();
 
       List<Map<String, dynamic>> loadedServices = [];
@@ -101,13 +103,15 @@ class _ExplorePageState extends State<ExplorePage> {
       for (var offerDoc in offerSnapshot.docs) {
         final offerData = offerDoc.data();
         final serviceId = offerData['serviceID'];
+        final endTime = offerData['endTime'] as Timestamp;
 
-        final serviceDoc =
-            await _firestore.collection('Service').doc(serviceId).get();
+        final serviceRef = _firestore.collection('Service').doc(serviceId);
+        final serviceDoc = await serviceRef.get();
         if (!serviceDoc.exists) continue;
 
         final serviceData = serviceDoc.data()!;
         String? street;
+
         if (serviceData['AddressID'] != null) {
           final addressDoc = await _firestore
               .collection('Address')
@@ -144,7 +148,7 @@ class _ExplorePageState extends State<ExplorePage> {
       debugPrint('Error loading offers: $e');
     } finally {
       setState(() {
-        _isLoading = false; // End loading after offers are fetched
+        _isLoading = false;
       });
     }
   }
@@ -156,40 +160,46 @@ class _ExplorePageState extends State<ExplorePage> {
           .where('Name', isEqualTo: categoryName)
           .limit(1)
           .get();
+
       if (categorySnapshot.docs.isEmpty) return;
 
       final categoryId = categorySnapshot.docs.first.id;
+
       final serviceSnapshot = await _firestore
           .collection('Service')
           .where('CategoryID', isEqualTo: categoryId)
           .get();
 
-      List<Map<String, dynamic>> loadedServices = [];
-
-      for (var doc in serviceSnapshot.docs) {
+      // Prepare list of futures
+      List<Future<Map<String, dynamic>>> serviceFutures =
+          serviceSnapshot.docs.map((doc) async {
         final data = doc.data();
         final serviceId = doc.id;
 
-        String? street;
-        if (data['AddressID'] != null) {
-          final addressDoc = await _firestore
-              .collection('Address')
-              .doc(data['AddressID'])
-              .get();
-          street = addressDoc.data()?['Street'] ?? 'Unknown Street';
-        }
+        final addressFuture = data['AddressID'] != null
+            ? _firestore.collection('Address').doc(data['AddressID']).get()
+            : Future.value(null);
 
-        String? imageUrl;
-        final imageSnapshot = await _firestore
+        final imageFuture = _firestore
             .collection('Service Images')
             .where('ServiceID', isEqualTo: serviceId)
             .limit(1)
             .get();
-        if (imageSnapshot.docs.isNotEmpty) {
-          imageUrl = imageSnapshot.docs.first.data()['URL'];
-        }
 
-        loadedServices.add({
+        final results = await Future.wait([addressFuture, imageFuture]);
+
+        final addressDoc = results[0] as DocumentSnapshot?;
+        final imageSnapshot = results[1] as QuerySnapshot;
+
+        String? street = addressDoc?.data() != null
+            ? (addressDoc!.data() as Map<String, dynamic>)['Street']
+            : 'Unknown Street';
+
+        String? imageUrl = imageSnapshot.docs.isNotEmpty
+            ? (imageSnapshot.docs.first.data() as Map<String, dynamic>)['URL']
+            : null;
+
+        return {
           'id': serviceId,
           'description': data['Description'],
           'price': data['Price'],
@@ -197,8 +207,11 @@ class _ExplorePageState extends State<ExplorePage> {
           'availability': data['Availability'],
           'street': street,
           'imageUrl': imageUrl,
-        });
-      }
+        };
+      }).toList();
+
+      // Wait for all to complete
+      final loadedServices = await Future.wait(serviceFutures);
 
       setState(() {
         _services = loadedServices;
@@ -207,7 +220,7 @@ class _ExplorePageState extends State<ExplorePage> {
       debugPrint('Error loading services: $e');
     } finally {
       setState(() {
-        _isLoading = false; // End loading after regular services are fetched
+        _isLoading = false;
       });
     }
   }
