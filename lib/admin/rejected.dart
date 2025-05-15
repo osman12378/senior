@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'payment_details.dart';
 
 class RejectedPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final String adminId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     return Theme(
       data: ThemeData.light(),
       child: Scaffold(
@@ -19,11 +22,11 @@ class RejectedPage extends StatelessWidget {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return Center(child: CircularProgressIndicator());
             }
-      
+
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
               return Center(child: Text("No rejected requests"));
             }
-      
+
             return ListView.builder(
               itemCount: snapshot.data!.docs.length,
               itemBuilder: (context, index) {
@@ -33,31 +36,32 @@ class RejectedPage extends StatelessWidget {
                 String paymentImageUrl = data['Payment_image'] ?? '';
                 String payDocId = payDoc.id;
                 String subscriptionId = data['SubscriptionID'] ?? '';
-      
+
                 return FutureBuilder<DocumentSnapshot>(
                   future: FirebaseFirestore.instance
                       .collection('users')
                       .doc(userId)
                       .get(),
                   builder: (context, userSnapshot) {
-                    if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    if (userSnapshot.connectionState ==
+                        ConnectionState.waiting) {
                       return Center(child: CircularProgressIndicator());
                     }
-      
+
                     if (!userSnapshot.hasData || userSnapshot.data == null) {
                       return ListTile(title: Text("User data not found"));
                     }
-      
+
                     var userData =
                         userSnapshot.data!.data() as Map<String, dynamic>?;
                     if (userData == null) {
                       return ListTile(title: Text("No user data"));
                     }
-      
+
                     String name = userData['username'] ?? 'Unknown';
                     String email = userData['email'] ?? 'No email available';
                     String profilePicPath = 'profiles/$userId.jpg';
-      
+
                     return FutureBuilder<String?>(
                       future: FirebaseStorage.instance
                           .ref(profilePicPath)
@@ -66,7 +70,7 @@ class RejectedPage extends StatelessWidget {
                       builder: (context, imageSnapshot) {
                         String profilePicUrl = imageSnapshot.data ??
                             'https://via.placeholder.com/150';
-      
+
                         return FutureBuilder<DocumentSnapshot>(
                           future: FirebaseFirestore.instance
                               .collection('Subscription')
@@ -74,7 +78,7 @@ class RejectedPage extends StatelessWidget {
                               .get(),
                           builder: (context, subscriptionSnapshot) {
                             String subscriptionName = 'Unknown Subscription';
-      
+
                             if (subscriptionSnapshot.hasData &&
                                 subscriptionSnapshot.data!.exists) {
                               var subData = subscriptionSnapshot.data!.data()
@@ -82,7 +86,7 @@ class RejectedPage extends StatelessWidget {
                               subscriptionName =
                                   subData['name'] ?? 'Unknown Subscription';
                             }
-      
+
                             return ListTile(
                               onTap: () {
                                 Navigator.push(
@@ -97,6 +101,7 @@ class RejectedPage extends StatelessWidget {
                                       userId: userId,
                                       status: data['Status'],
                                       subscriptionId: subscriptionId,
+                                      adminId: adminId, // ✅ passed here
                                     ),
                                   ),
                                 );
@@ -114,8 +119,9 @@ class RejectedPage extends StatelessWidget {
                                 ),
                               ),
                               title: Text(name),
-                              subtitle:
-                                  Text('$email\nSubscription: $subscriptionName'),
+                              subtitle: Text(
+                                '$email\nSubscription requested: $subscriptionName',
+                              ),
                               isThreeLine: true,
                             );
                           },

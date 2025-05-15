@@ -27,7 +27,7 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
   final TextEditingController priceController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
 
-  bool isAvailable = true;
+  
   List<File> imageFiles = [];
   bool isLoading = false;
 
@@ -60,7 +60,7 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
 
       await serviceRef.set({
         'Price': double.parse(priceController.text),
-        'Availability': isAvailable,
+        
         'Description': descriptionController.text,
         'CategoryID': widget.categoryId,
         'UserID': widget.userId,

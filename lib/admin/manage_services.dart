@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'deleted_services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class UserServicesPage extends StatelessWidget {
   final String userId;
@@ -43,11 +44,11 @@ class UserServicesPage extends StatelessWidget {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return Center(child: CircularProgressIndicator());
             }
-      
+
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
               return Center(child: Text("No services found"));
             }
-      
+
             return ListView.builder(
               itemCount: snapshot.data!.docs.length,
               itemBuilder: (context, index) {
@@ -58,7 +59,7 @@ class UserServicesPage extends StatelessWidget {
                     serviceData['Description'] ?? 'No description';
                 String price = serviceData['Price']?.toString() ?? '0';
                 String type = serviceData['Type'] ?? 'N/A';
-      
+
                 // Fetch the service image from 'Service Images' collection
                 return FutureBuilder<String?>(
                   future: _getServiceImageUrl(serviceId),
@@ -71,11 +72,11 @@ class UserServicesPage extends StatelessWidget {
                         subtitle: Text('Price: $price, Type: $type'),
                       );
                     }
-      
+
                     String serviceImageUrl = imageSnapshot.hasData
                         ? imageSnapshot.data!
                         : 'https://via.placeholder.com/150';
-      
+
                     return ListTile(
                         leading: GestureDetector(
                           onTap: () {
@@ -106,6 +107,10 @@ class UserServicesPage extends StatelessWidget {
                         trailing: IconButton(
                           icon: Icon(Icons.delete, color: Colors.red),
                           onPressed: () {
+                            String adminId = FirebaseAuth.instance.currentUser!
+                                .uid; // Get the admin's UID
+
+                            // Show the delete confirmation dialog
                             showDialog(
                               context: context,
                               builder: (_) => AlertDialog(
@@ -122,7 +127,11 @@ class UserServicesPage extends StatelessWidget {
                                       FirebaseFirestore.instance
                                           .collection('Service')
                                           .doc(serviceId)
-                                          .update({'Deleted': true}).then((_) {
+                                          .update({
+                                        'Deleted': true,
+                                        'adminId':
+                                            adminId, // Store the admin's ID who deleted the service
+                                      }).then((_) {
                                         Navigator.pop(context);
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(

@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'payment_details.dart'; // Import the PaymentDetailsPage
+import 'payment_details.dart';
 
 class ApprovedPage extends StatefulWidget {
   const ApprovedPage({super.key});
 
   @override
-  State<ApprovedPage> createState() => _MyWidgetState();
+  State<ApprovedPage> createState() => _ApprovedPageState();
 }
 
-class _MyWidgetState extends State<ApprovedPage> {
+class _ApprovedPageState extends State<ApprovedPage> {
   @override
   Widget build(BuildContext context) {
+    final String adminId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     return Theme(
       data: ThemeData.light(),
       child: Scaffold(
@@ -26,11 +29,11 @@ class _MyWidgetState extends State<ApprovedPage> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return Center(child: CircularProgressIndicator());
             }
-      
+
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
               return Center(child: Text("No approved requests"));
             }
-      
+
             return ListView.builder(
               itemCount: snapshot.data!.docs.length,
               itemBuilder: (context, index) {
@@ -40,31 +43,32 @@ class _MyWidgetState extends State<ApprovedPage> {
                 String paymentImageUrl = data['Payment_image'] ?? '';
                 String payDocId = payDoc.id;
                 String subscriptionId = data['SubscriptionID'] ?? '';
-      
+
                 return FutureBuilder<DocumentSnapshot>(
                   future: FirebaseFirestore.instance
                       .collection('users')
                       .doc(userId)
                       .get(),
                   builder: (context, userSnapshot) {
-                    if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    if (userSnapshot.connectionState ==
+                        ConnectionState.waiting) {
                       return Center(child: CircularProgressIndicator());
                     }
-      
+
                     if (!userSnapshot.hasData || userSnapshot.data == null) {
                       return ListTile(title: Text("User data not found"));
                     }
-      
+
                     var userData =
                         userSnapshot.data!.data() as Map<String, dynamic>?;
                     if (userData == null) {
                       return ListTile(title: Text("No user data"));
                     }
-      
+
                     String name = userData['username'] ?? 'Unknown';
                     String email = userData['email'] ?? 'No email available';
                     String profilePicPath = 'profiles/$userId.jpg';
-      
+
                     return FutureBuilder<String?>(
                       future: FirebaseStorage.instance
                           .ref(profilePicPath)
@@ -73,7 +77,7 @@ class _MyWidgetState extends State<ApprovedPage> {
                       builder: (context, imageSnapshot) {
                         String profilePicUrl = imageSnapshot.data ??
                             'https://via.placeholder.com/150';
-      
+
                         return FutureBuilder<DocumentSnapshot>(
                           future: FirebaseFirestore.instance
                               .collection('Subscription')
@@ -81,7 +85,7 @@ class _MyWidgetState extends State<ApprovedPage> {
                               .get(),
                           builder: (context, subscriptionSnapshot) {
                             String subscriptionName = 'Unknown Subscription';
-      
+
                             if (subscriptionSnapshot.hasData &&
                                 subscriptionSnapshot.data!.exists) {
                               var subData = subscriptionSnapshot.data!.data()
@@ -89,7 +93,7 @@ class _MyWidgetState extends State<ApprovedPage> {
                               subscriptionName =
                                   subData['name'] ?? 'Unknown Subscription';
                             }
-      
+
                             return ListTile(
                               onTap: () {
                                 Navigator.push(
@@ -104,6 +108,7 @@ class _MyWidgetState extends State<ApprovedPage> {
                                       userId: userId,
                                       status: data['Status'],
                                       subscriptionId: subscriptionId,
+                                      adminId: adminId, // ✅ Passed here
                                     ),
                                   ),
                                 );
@@ -121,8 +126,9 @@ class _MyWidgetState extends State<ApprovedPage> {
                                 ),
                               ),
                               title: Text(name),
-                              subtitle:
-                                  Text('$email\nSubscription: $subscriptionName'),
+                              subtitle: Text(
+                                '$email\nSubscription: $subscriptionName',
+                              ),
                               isThreeLine: true,
                             );
                           },

@@ -7,82 +7,77 @@ class SecondPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white, // Set background color to white
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment:
-              MainAxisAlignment.center, // Center the content vertically
-          crossAxisAlignment:
-              CrossAxisAlignment.center, // Center the content horizontally
-          children: <Widget>[
-            // Title: "Find & Rent with Ease" in purple, centered
-            Text(
-              'Find & Rent\nwith Ease', // Combined title text
-              textAlign: TextAlign.center, // Center the title text
-              style: TextStyle(
-                fontSize: 48, // Big font size
-                fontWeight: FontWeight.bold,
-                color: Colors.indigo, // Purple color
-              ),
-            ),
-            SizedBox(height: 80), // Add some spacing
-            // Body text as a single block
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: TextStyle(
-                  fontSize: 33,
-                  color: Colors.black, // Black color for the body text
-                  fontWeight: FontWeight.bold, // Make the body text bold
+          padding: const EdgeInsets.all(16.0),
+          child: ListView(
+            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 32.0),
+            children: <Widget>[
+              // Title
+              Center(
+                child: Text(
+                  'Find & Rent\nwith Ease',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.indigo,
+                  ),
                 ),
-                children: [
-                  TextSpan(
-                    text:
-                        'Looking for a room, house, car, or unique travel experience?\n',
-                  ),
-                  TextSpan(
-                    text: 'Rent',
-                  ),
-                  TextSpan(
-                    text: 'X',
+              ),
+              SizedBox(height: 20),
+
+              // RichText body
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: RichText(
+                  textAlign: TextAlign.center,
+                  text: TextSpan(
                     style: TextStyle(
-                      color: Colors.orange, // Orange color for "X"
+                      fontSize: 33,
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
                     ),
+                    children: [
+                      TextSpan(
+                        text:
+                            'Looking for a room, house, car, or unique travel experience?\n',
+                      ),
+                      TextSpan(text: 'Rent'),
+                      TextSpan(
+                        text: 'X',
+                        style: TextStyle(color: Colors.orange),
+                      ),
+                      TextSpan(
+                        text:
+                            ' brings everything into one place, saving you time and effort. No more searching\nacross multiple platforms',
+                      ),
+                    ],
                   ),
-                  TextSpan(
-                    text:
-                        ' brings everything into one place, saving you time and effort. No more searching\n'
-                        'across multiple platforms',
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 20), // Add some spacing
-            Spacer(), // Push the button to the bottom
-            // Next button with purple background and white text
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ThirdPage()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    Colors.indigo, // Purple background for the button
-                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-              ),
-              child: Text(
-                'Next',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.white, // White text for the button
                 ),
               ),
-            ),
-            SizedBox(height: 100), // Add some spacing at the bottom
-          ],
-        ),
-      ),
+              SizedBox(height: 20),
+
+              // Next button
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => ThirdPage()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  ),
+                  child: Text(
+                    'Next',
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
+                ),
+              ),
+              SizedBox(height: 100),
+            ],
+          )),
     );
   }
 }

@@ -15,7 +15,11 @@ class MyApp extends StatelessWidget {
       title: 'RentX',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        fontFamily: 'Inter',
         primarySwatch: Colors.indigo,
+        textTheme: ThemeData.light().textTheme.apply(
+              fontFamily: 'Inter',
+            ),
       ),
       home: SplashScreen(),
     );

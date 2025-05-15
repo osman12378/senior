@@ -12,6 +12,8 @@ class PaymentDetailsPage extends StatelessWidget {
   final String status;
   final String subscriptionId;
 
+  final String adminId;
+
   const PaymentDetailsPage({
     Key? key,
     required this.payDocId,
@@ -22,14 +24,15 @@ class PaymentDetailsPage extends StatelessWidget {
     required this.userId,
     required this.status,
     required this.subscriptionId,
+    required this.adminId, // <-- Add this line
   }) : super(key: key);
 
   void updateStatus(BuildContext context, String newStatus) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('Pay')
-          .doc(payDocId)
-          .update({'Status': newStatus});
+      await FirebaseFirestore.instance.collection('Pay').doc(payDocId).update({
+        'Status': newStatus,
+        'AdminID': adminId, // store which admin made the change
+      });
 
       if (newStatus == 'approved') {
         DocumentSnapshot paymentDoc = await FirebaseFirestore.instance
@@ -127,7 +130,8 @@ class PaymentDetailsPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => FullScreenImage(imageUrl: paymentImageUrl),
+                      builder: (_) =>
+                          FullScreenImage(imageUrl: paymentImageUrl),
                     ),
                   );
                 },

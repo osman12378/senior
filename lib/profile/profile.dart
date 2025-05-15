@@ -14,6 +14,8 @@ import 'package:senior/profile/edit_profile.dart';
 import 'package:senior/subscription/subscription.dart';
 import 'package:senior/services/offer.dart';
 import 'package:senior/services/select.dart';
+import 'package:senior/booking/manage.dart';
+import 'package:senior/booking/track.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -135,7 +137,13 @@ class _ProfilePageState extends State<ProfilePage> {
               ListTile(
                 title: const Text("   Track bookings"),
                 trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {},
+                onTap: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => TrackMyBookingsPage()),
+                  );
+                },
               ),
               const Divider(indent: 15, endIndent: 15, color: Colors.black),
 
@@ -162,7 +170,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => ManageOffers()),
+                      MaterialPageRoute(builder: (_) => ManageBooking()),
                     ).then((_) {
                       // This runs when you come back from ServicePage
                       setState(() {

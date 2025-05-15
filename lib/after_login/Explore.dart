@@ -5,9 +5,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:senior/after_login/wishlist.dart';
 import 'package:senior/chat/messages.dart';
 import 'package:senior/profile/profile.dart';
+import 'package:senior/after_login/service_detail_page.dart';
 
 class ExplorePage extends StatefulWidget {
-  const ExplorePage({Key? key}) : super(key: key);
+  final String? initialCategory;
+
+  const ExplorePage({Key? key, this.initialCategory}) : super(key: key);
 
   @override
   _ExplorePageState createState() => _ExplorePageState();
@@ -20,7 +23,7 @@ class _ExplorePageState extends State<ExplorePage> {
   String? _selectedCategory;
   List<Map<String, dynamic>> _services = [];
   Map<String, bool> _favoriteStatus = {};
-  bool _isLoading = false; // Added flag for loading state
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -29,29 +32,14 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   Future<void> loadCategories() async {
-    setState(() {
-      _isLoading = true; // Start loading when categories are being fetched
-    });
-
+    setState(() => _isLoading = true);
     try {
-      // Get the current user
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) return;
 
-      // Fetch the user's role from the 'Users' collection
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      final userData = userDoc.data();
-      final role =
-          userData?['role']; // Assuming 'role' field is in the user's document
-
-      // Load categories from Firestore
       final snapshot = await _firestore.collection('Category').get();
       final categories = snapshot.docs.map((doc) {
-        return {
-          'id': doc.id,
-          'name': doc['Name'],
-          'type': doc['Type'],
-        };
+        return {'id': doc.id, 'name': doc['Name'], 'type': doc['Type']};
       }).toList();
 
       categories
@@ -67,17 +55,14 @@ class _ExplorePageState extends State<ExplorePage> {
     } catch (e) {
       debugPrint('Error loading categories: $e');
     } finally {
-      setState(() {
-        _isLoading = false; // End loading once the data is fetched
-      });
+      setState(() => _isLoading = false);
     }
   }
 
   Future<void> loadServicesByCategory(String categoryName) async {
     setState(() {
       _services = [];
-      _isLoading =
-          true; // Set loading state true when services are being fetched
+      _isLoading = true;
     });
 
     if (categoryName == 'Offers') {
@@ -89,13 +74,11 @@ class _ExplorePageState extends State<ExplorePage> {
 
   Future<void> loadOffers() async {
     try {
-      final now = Timestamp.fromDate(DateTime.now()); // Get current time
-      // Fetch all offers where the endTime is greater than the current time
+      final now = Timestamp.fromDate(DateTime.now());
       final offerSnapshot = await _firestore
           .collection('Offer')
           .where('endTime', isGreaterThan: now)
-          .orderBy('endTime',
-              descending: true) // Sort offers by endTime in descending order
+          .orderBy('endTime', descending: true)
           .get();
 
       List<Map<String, dynamic>> loadedServices = [];
@@ -103,10 +86,9 @@ class _ExplorePageState extends State<ExplorePage> {
       for (var offerDoc in offerSnapshot.docs) {
         final offerData = offerDoc.data();
         final serviceId = offerData['serviceID'];
-        final endTime = offerData['endTime'] as Timestamp;
 
-        final serviceRef = _firestore.collection('Service').doc(serviceId);
-        final serviceDoc = await serviceRef.get();
+        final serviceDoc =
+            await _firestore.collection('Service').doc(serviceId).get();
         if (!serviceDoc.exists) continue;
 
         final serviceData = serviceDoc.data()!;
@@ -118,6 +100,11 @@ class _ExplorePageState extends State<ExplorePage> {
               .doc(serviceData['AddressID'])
               .get();
           street = addressDoc.data()?['Street'] ?? 'Unknown Street';
+        }
+
+        // Check if the service is not deleted (deleted == false)
+        if (serviceData['Deleted'] == true) {
+          continue; // Skip the service if it is deleted
         }
 
         String? imageUrl;
@@ -133,23 +120,19 @@ class _ExplorePageState extends State<ExplorePage> {
         loadedServices.add({
           'id': serviceId,
           'description': serviceData['Description'],
-          'price': offerData['price'], // use price from Offer
+          'price': offerData['price'],
           'type': serviceData['Type'],
-          'availability': serviceData['Availability'],
+          'deleted': serviceData['Deleted'],
           'street': street,
           'imageUrl': imageUrl,
         });
       }
 
-      setState(() {
-        _services = loadedServices;
-      });
+      setState(() => _services = loadedServices);
     } catch (e) {
       debugPrint('Error loading offers: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -160,18 +143,15 @@ class _ExplorePageState extends State<ExplorePage> {
           .where('Name', isEqualTo: categoryName)
           .limit(1)
           .get();
-
       if (categorySnapshot.docs.isEmpty) return;
 
       final categoryId = categorySnapshot.docs.first.id;
-
       final serviceSnapshot = await _firestore
           .collection('Service')
           .where('CategoryID', isEqualTo: categoryId)
           .get();
 
-      // Prepare list of futures
-      List<Future<Map<String, dynamic>>> serviceFutures =
+      List<Future<Map<String, dynamic>?>> serviceFutures =
           serviceSnapshot.docs.map((doc) async {
         final data = doc.data();
         final serviceId = doc.id;
@@ -199,29 +179,33 @@ class _ExplorePageState extends State<ExplorePage> {
             ? (imageSnapshot.docs.first.data() as Map<String, dynamic>)['URL']
             : null;
 
+        // Check if the service is not deleted (deleted == false)
+        if (data['Deleted'] == true) {
+          return null; // Skip services that are deleted
+        }
+
         return {
           'id': serviceId,
           'description': data['Description'],
           'price': data['Price'],
           'type': data['Type'],
-          'availability': data['Availability'],
+          'deleted': data['Deleted'],
           'street': street,
           'imageUrl': imageUrl,
         };
       }).toList();
 
-      // Wait for all to complete
-      final loadedServices = await Future.wait(serviceFutures);
+      // Filter out null results (deleted services)
+      final loadedServices = (await Future.wait(serviceFutures))
+          .where((service) => service != null)
+          .map((service) => service as Map<String, dynamic>)
+          .toList(); // Cast the result to List<Map<String, dynamic>>
 
-      setState(() {
-        _services = loadedServices;
-      });
+      setState(() => _services = loadedServices);
     } catch (e) {
       debugPrint('Error loading services: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -241,14 +225,10 @@ class _ExplorePageState extends State<ExplorePage> {
         'userId': userId,
         'createdAt': FieldValue.serverTimestamp(),
       });
-      setState(() {
-        _favoriteStatus[serviceId] = true;
-      });
+      setState(() => _favoriteStatus[serviceId] = true);
     } else {
       await wishlistSnapshot.docs.first.reference.delete();
-      setState(() {
-        _favoriteStatus[serviceId] = false;
-      });
+      setState(() => _favoriteStatus[serviceId] = false);
     }
   }
 
@@ -269,189 +249,250 @@ class _ExplorePageState extends State<ExplorePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: TextField(
-          decoration: InputDecoration(
-            hintText: "Search for services...",
-            suffixIcon: const Icon(Icons.search),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
+        title: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: 'Rent',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 35,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              TextSpan(
+                text: 'X',
+                style: TextStyle(
+                  color: Colors.orange, // Set the color for 'X' to orange
+                  fontSize: 35,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ],
           ),
-          onChanged: (value) => setState(() => _searchQuery = value),
         ),
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        elevation: 0,
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.white,
+        elevation: 3,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
       ),
       body: Column(
         children: [
           if (_categories.isNotEmpty)
-            Column(
-              children: [
-                SizedBox(
-                  height: 60,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) {
-                      final category = _categories[index];
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 10),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          color: _selectedCategory == category['name']
-                              ? Colors.indigo
-                              : Colors.grey[200],
+            SizedBox(
+              height: 60,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final category = _categories[index];
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: _selectedCategory == category['name']
+                          ? Colors.indigo
+                          : Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 6,
+                          spreadRadius: 2,
+                          offset: Offset(0, 4),
                         ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(20),
-                            onTap: () {
-                              setState(() {
-                                _selectedCategory = category['name'];
-                              });
-                              loadServicesByCategory(category['name']);
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              child: Center(
-                                child: Text(
-                                  category['name'],
-                                  style: TextStyle(
-                                    color: _selectedCategory == category['name']
-                                        ? Colors.white
-                                        : Colors.grey[800],
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () {
+                          setState(() {
+                            _selectedCategory = category['name'];
+                          });
+                          loadServicesByCategory(category['name']);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          child: Center(
+                            child: Text(
+                              category['name'],
+                              style: TextStyle(
+                                color: _selectedCategory == category['name']
+                                    ? Colors.white
+                                    : Colors.grey[800],
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-                Divider(height: 1, color: Colors.grey[300]),
-              ],
-            ),
-          if (_isLoading) // Display loading indicator when fetching data
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 20),
-                  Text("Please wait a moment..."),
-                ],
-              ),
-            ),
-          if (!_isLoading && _services.isEmpty)
-            Center(
-              child: Text(
-                _selectedCategory == 'Offers'
-                    ? "No offers available."
-                    : "No services available.",
-                style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           Expanded(
-            child: !_isLoading && _services.isNotEmpty
-                ? ListView.builder(
-                    itemCount: _services.length,
-                    itemBuilder: (context, index) {
-                      final service = _services[index];
-                      final serviceId = service['id'];
-                      final isFavorite = _favoriteStatus[serviceId] ?? false;
+            child: _isLoading
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 10),
+                        Text("Please wait a moment..."),
+                      ],
+                    ),
+                  )
+                : ListView(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: TextField(
+                          decoration: InputDecoration(
+                            hintText: "Start your search",
+                            suffixIcon: const Icon(Icons.search),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            contentPadding: EdgeInsets.symmetric(
+                                vertical: 10, horizontal: 15),
+                          ),
+                          onChanged: (value) =>
+                              setState(() => _searchQuery = value),
+                        ),
+                      ),
+                      if (_services.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(
+                              _selectedCategory == 'Offers'
+                                  ? "No offers available."
+                                  : "No services available.",
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                      ..._services
+                          .where((service) => service['description']
+                              .toLowerCase()
+                              .contains(_searchQuery.toLowerCase()))
+                          .map((service) {
+                        final serviceId = service['id'];
+                        final isFavorite = _favoriteStatus[serviceId] ?? false;
 
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Stack(
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    ServiceDetailPage(serviceId: service['id']),
+                              ),
+                            );
+                          },
+                          child: Card(
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (service['imageUrl'] != null)
-                                  ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(16)),
-                                    child: CachedNetworkImage(
-                                      imageUrl: service['imageUrl'],
-                                      height: 220,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) =>
-                                          const Center(
-                                              child:
-                                                  CircularProgressIndicator()),
-                                      errorWidget: (context, url, error) =>
-                                          const Icon(Icons.error),
-                                    ),
-                                  ),
-                                if (_selectedCategory != 'Offers')
-                                  Positioned(
-                                    top: 10,
-                                    right: 10,
-                                    child: GestureDetector(
-                                      onTap: () => toggleFavorite(serviceId),
-                                      child: CircleAvatar(
-                                        backgroundColor: Colors.white,
-                                        child: Icon(
-                                          isFavorite
-                                              ? Icons.favorite
-                                              : Icons.favorite_border,
-                                          color: isFavorite
-                                              ? Colors.red
-                                              : Colors.black,
+                                Stack(
+                                  children: [
+                                    if (service['imageUrl'] != null)
+                                      ClipRRect(
+                                        borderRadius:
+                                            const BorderRadius.vertical(
+                                                top: Radius.circular(16)),
+                                        child: CachedNetworkImage(
+                                          imageUrl: service['imageUrl'],
+                                          height: 220,
+                                          width: double.infinity,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              const Center(
+                                                  child:
+                                                      CircularProgressIndicator()),
+                                          errorWidget: (context, url, error) =>
+                                              const Icon(Icons.error),
                                         ),
                                       ),
-                                    ),
+                                    if (_selectedCategory != 'Offers')
+                                      Positioned(
+                                        top: 10,
+                                        right: 10,
+                                        child: GestureDetector(
+                                          onTap: () =>
+                                              toggleFavorite(serviceId),
+                                          child: CircleAvatar(
+                                            backgroundColor: Colors.white,
+                                            child: Icon(
+                                              isFavorite
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
+                                              color: isFavorite
+                                                  ? Colors.red
+                                                  : Colors.black,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${_selectedCategory ?? "Home"} in ${service['street'] ?? "Unknown"}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        service['description'] ??
+                                            'No description',
+                                        style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${service['price']}\$ per day',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15),
+                                      ),
+                                    ],
                                   ),
+                                ),
                               ],
                             ),
-                            Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${_selectedCategory ?? "Home"} in ${service['street'] ?? "Unknown"}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    service['description'] ?? 'No description',
-                                    style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${service['price']}\$ per night',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  )
-                : Container(),
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ),
           ),
         ],
       ),

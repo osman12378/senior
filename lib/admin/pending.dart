@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'payment_details.dart';
 
 class PendingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final String adminId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     return Theme(
       data: ThemeData.light(),
       child: Scaffold(
@@ -19,11 +22,11 @@ class PendingPage extends StatelessWidget {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return Center(child: CircularProgressIndicator());
             }
-      
+
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
               return Center(child: Text("No pending requests"));
             }
-      
+
             return ListView.builder(
               itemCount: snapshot.data!.docs.length,
               itemBuilder: (context, index) {
@@ -33,31 +36,32 @@ class PendingPage extends StatelessWidget {
                 String paymentImageUrl = data['Payment_image'] ?? '';
                 String subscriptionId = data['SubscriptionID'] ?? '';
                 String payDocId = payDoc.id;
-      
+
                 return FutureBuilder<DocumentSnapshot>(
                   future: FirebaseFirestore.instance
                       .collection('users')
                       .doc(userId)
                       .get(),
                   builder: (context, userSnapshot) {
-                    if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    if (userSnapshot.connectionState ==
+                        ConnectionState.waiting) {
                       return Center(child: CircularProgressIndicator());
                     }
-      
+
                     if (!userSnapshot.hasData || userSnapshot.data == null) {
                       return ListTile(title: Text("User data not found"));
                     }
-      
+
                     var userData =
                         userSnapshot.data!.data() as Map<String, dynamic>?;
                     if (userData == null) {
                       return ListTile(title: Text("No user data"));
                     }
-      
+
                     String name = userData['username'] ?? 'Unknown';
                     String email = userData['email'] ?? 'No email available';
                     String profilePicPath = 'profiles/$userId.jpg';
-      
+
                     return FutureBuilder<String?>(
                       future: FirebaseStorage.instance
                           .ref(profilePicPath)
@@ -66,7 +70,7 @@ class PendingPage extends StatelessWidget {
                       builder: (context, imageSnapshot) {
                         String profilePicUrl = imageSnapshot.data ??
                             'https://via.placeholder.com/150';
-      
+
                         return FutureBuilder<DocumentSnapshot>(
                           future: FirebaseFirestore.instance
                               .collection('Subscription')
@@ -83,7 +87,7 @@ class PendingPage extends StatelessWidget {
                                 subscriptionName = subData['name'];
                               }
                             }
-      
+
                             return ListTile(
                               onTap: () {
                                 Navigator.push(
@@ -98,6 +102,7 @@ class PendingPage extends StatelessWidget {
                                       userId: userId,
                                       status: data['Status'],
                                       subscriptionId: subscriptionId,
+                                      adminId: adminId, // ✅ Passed here
                                     ),
                                   ),
                                 );
@@ -120,10 +125,8 @@ class PendingPage extends StatelessWidget {
                                 subscriptionName,
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize:
-                                      16.0, // Adjust the font size as needed
-                                  color: Colors
-                                      .red, // Change the color to any color you prefer
+                                  fontSize: 16.0,
+                                  color: Colors.red,
                                 ),
                               ),
                             );

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'Booking_payment.dart';
 
 class ServiceDetailPage extends StatefulWidget {
   final String serviceId;
@@ -13,6 +15,7 @@ class ServiceDetailPage extends StatefulWidget {
 
 class _ServiceDetailPageState extends State<ServiceDetailPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   List<String> imageUrls = [];
   Map<String, dynamic>? serviceData;
@@ -29,7 +32,8 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
 
   Future<void> loadServiceDetails() async {
     try {
-      final serviceDoc = await _firestore.collection('Service').doc(widget.serviceId).get();
+      final serviceDoc =
+          await _firestore.collection('Service').doc(widget.serviceId).get();
       if (!serviceDoc.exists) return;
 
       final data = serviceDoc.data()!;
@@ -39,25 +43,46 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
           .where('ServiceID', isEqualTo: widget.serviceId)
           .get();
 
-      List<String> urls = imagesSnapshot.docs.map((doc) => doc['URL'] as String).toList();
+      List<String> urls =
+          imagesSnapshot.docs.map((doc) => doc['URL'] as String).toList();
 
-      // Fetch category type from Category table
-      final categoryDoc = await _firestore.collection('Category').doc(data['CategoryID']).get();
-      final categoryType = categoryDoc.exists ? categoryDoc['Type'].toString().toLowerCase() : '';
+      final categoryDoc =
+          await _firestore.collection('Category').doc(data['CategoryID']).get();
+      final categoryType = categoryDoc.exists
+          ? categoryDoc['Type'].toString().toLowerCase()
+          : '';
 
-      Map<String, dynamic>? extra;
+      Map<String, dynamic> combinedExtra = {};
+
       if (categoryType == 'cars') {
-        final carDoc = await _firestore.collection('carDescription').doc(widget.serviceId).get();
-        if (carDoc.exists) extra = carDoc.data();
+        final carSnapshot = await _firestore
+            .collection('CarDescription')
+            .where('ServiceID', isEqualTo: widget.serviceId)
+            .limit(1)
+            .get();
+
+        final addressDoc =
+            await _firestore.collection('Address').doc(data['AddressID']).get();
+
+        if (carSnapshot.docs.isNotEmpty) {
+          final carData =
+              Map<String, dynamic>.from(carSnapshot.docs.first.data());
+          carData.remove('ServiceID');
+          combinedExtra.addAll(carData);
+        }
+        if (addressDoc.exists) {
+          combinedExtra.addAll(addressDoc.data()!);
+        }
       } else if (categoryType == 'properties') {
-        final addressDoc = await _firestore.collection('Address').doc(data['AddressID']).get();
-        if (addressDoc.exists) extra = addressDoc.data();
+        final addressDoc =
+            await _firestore.collection('Address').doc(data['AddressID']).get();
+        if (addressDoc.exists) combinedExtra.addAll(addressDoc.data()!);
       }
 
       setState(() {
         serviceData = data;
         imageUrls = urls;
-        extraData = extra;
+        extraData = combinedExtra;
         isLoading = false;
       });
     } catch (e) {
@@ -85,12 +110,80 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
     }
   }
 
-  void goToPaymentPage() {
-    if (startDate != null && endDate != null) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const Placeholder()));
-    } else {
+  Future<void> placeBooking() async {
+    if (startDate == null || endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select both start and end dates")),
+        const SnackBar(
+            content: Text("Please select both start and end dates"),
+            backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    if (endDate!.isBefore(startDate!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("End date must be after start date"),
+            backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final user = _auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("User not logged in"), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final pricePerDay = serviceData!['Price'] ?? 0;
+    final days = endDate!.difference(startDate!).inDays;
+    final fullPrice = days * pricePerDay;
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // 1. Create Booking
+      final bookingRef = await _firestore.collection('Booking').add({
+        'userId': user.uid,
+        'checkin-date': startDate,
+        'checkout-date': endDate,
+        'status': 'pending',
+        'full-price': fullPrice,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2. Create Book-Service mapping with pricePerDay
+      await _firestore.collection('Book-Service').add({
+        'BookingID': bookingRef.id,
+        'ServiceID': widget.serviceId,
+        'Price_Per_Day': pricePerDay,
+      });
+
+      Navigator.pop(context); // Close loading dialog
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => BookingPaymentPage(bookingId: bookingRef.id)),
+      );
+      // Navigate to payment
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Booking request placed!"),
+            backgroundColor: Colors.green),
+      );
+    } catch (e) {
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text("Booking failed: $e"), backgroundColor: Colors.red),
       );
     }
   }
@@ -106,7 +199,13 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Service Details", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.indigo))),
+      appBar: AppBar(
+        title: const Text("Service Details",
+            style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+                color: Colors.indigo)),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
@@ -126,8 +225,10 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                         child: CachedNetworkImage(
                           imageUrl: imageUrls[index],
                           fit: BoxFit.cover,
-                          placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                          errorWidget: (context, url, error) => const Icon(Icons.error),
+                          placeholder: (context, url) =>
+                              const Center(child: CircularProgressIndicator()),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.error),
                         ),
                       ),
                     );
@@ -135,19 +236,33 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                 ),
               ),
             const SizedBox(height: 16),
-            const Text("Description", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo)),
+            const Text("Description",
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.indigo)),
             const SizedBox(height: 8),
-            Text(serviceData!['Description'] ?? 'No description provided', style: const TextStyle(fontSize: 16)),
+            Text(serviceData!['Description'] ?? 'No description provided',
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            const Text("Details", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo)),
+            const Text("Details",
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.indigo)),
             const SizedBox(height: 8),
-            Text("Type: ${serviceData!['Type']}", style: const TextStyle(fontSize: 16)),
-            Text("Price: ${serviceData!['Price']}\$ per night", style: const TextStyle(fontSize: 16)),
-            Text("Availability: ${serviceData!['Availability'] ? 'Available' : 'Unavailable'}", style: const TextStyle(fontSize: 16)),
-            if (extraData != null) ...[
-              
-              ...extraData!.entries.map((entry) => Text("${entry.key}: ${entry.value}", style: const TextStyle(fontSize: 16))),
-            ],
+            Text("Type: ${serviceData!['Type']}",
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            Text("Price: ${serviceData!['Price']}\$ per day",
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            if (extraData != null)
+              ...extraData!.entries.map((entry) => Text(
+                  "${entry.key}: ${entry.value}",
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.bold))),
             const SizedBox(height: 24),
             Row(
               children: [
@@ -173,15 +288,17 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
             const SizedBox(height: 24),
             Center(
               child: ElevatedButton(
-                onPressed: goToPaymentPage,
+                onPressed: placeBooking,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigo,
-                  padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 60, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                child: const Text("Proceed to Payment", style: TextStyle(fontSize: 16, color: Colors.white)),
+                child: const Text("Place Booking",
+                    style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
             ),
           ],
