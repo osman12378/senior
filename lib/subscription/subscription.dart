@@ -45,7 +45,7 @@ class SubscriptionPage extends StatelessWidget {
                 subscriptionId: doc.id,
               );
 
-              ;
+              
             }).toList(),
           );
         },

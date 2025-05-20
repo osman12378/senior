@@ -31,7 +31,7 @@ class PaymentDetailsPage extends StatelessWidget {
     try {
       await FirebaseFirestore.instance.collection('Pay').doc(payDocId).update({
         'Status': newStatus,
-        'AdminID': adminId, // store which admin made the change
+        'AdminID': adminId,
       });
 
       if (newStatus == 'approved') {
@@ -41,7 +41,6 @@ class PaymentDetailsPage extends StatelessWidget {
             .get();
 
         var paymentData = paymentDoc.data() as Map<String, dynamic>;
-
         String subscriptionId = paymentData['SubscriptionID'];
         String newRole = '';
 
@@ -56,6 +55,16 @@ class PaymentDetailsPage extends StatelessWidget {
               .collection('users')
               .doc(userId)
               .update({'role': newRole});
+        }
+
+        // 👇 Update all user services to set deleted = false
+        QuerySnapshot userServices = await FirebaseFirestore.instance
+            .collection('Service')
+            .where('UserID', isEqualTo: userId)
+            .get();
+
+        for (var doc in userServices.docs) {
+          await doc.reference.update({'Deleted': false});
         }
       }
 

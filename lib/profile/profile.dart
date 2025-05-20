@@ -32,6 +32,45 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _userData = getUserData();
+    checkAndUpdateSubscription();
+  }
+
+  Future<void> checkAndUpdateSubscription() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final now = Timestamp.now();
+
+    // Fetch the user's latest approved payment
+    final payQuery = await FirebaseFirestore.instance
+        .collection('Pay')
+        .where('UserID', isEqualTo: user.uid)
+        .where('Status', isEqualTo: 'approved')
+        .get();
+
+    for (var doc in payQuery.docs) {
+      final endDate = doc['EndDate'] as Timestamp;
+
+      if (now.compareTo(endDate) > 0) {
+        // End date expired – update user role
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({
+          'role': 'renter',
+        });
+
+        // Mark all their services as deleted
+        final serviceQuery = await FirebaseFirestore.instance
+            .collection('Service')
+            .where('UserID', isEqualTo: user.uid)
+            .get();
+
+        for (var serviceDoc in serviceQuery.docs) {
+          await serviceDoc.reference.update({'Deleted': true});
+        }
+      }
+    }
   }
 
   Future<Map<String, dynamic>> getUserData() async {
