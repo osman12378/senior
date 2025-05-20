@@ -6,9 +6,21 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:senior/after_login/Explore.dart';
 
 class BookingPaymentPage extends StatefulWidget {
-  final String bookingId;
+  final String userId;
+  final String serviceId;
+  final DateTime startDate;
+  final DateTime endDate;
+  final double pricePerDay;
+  final double fullPrice;
 
-  BookingPaymentPage({required this.bookingId});
+  BookingPaymentPage({
+    required this.userId,
+    required this.serviceId,
+    required this.startDate,
+    required this.endDate,
+    required this.pricePerDay,
+    required this.fullPrice,
+  });
 
   @override
   _BookingPaymentPage createState() => _BookingPaymentPage();
@@ -44,6 +56,7 @@ class _BookingPaymentPage extends State<BookingPaymentPage> {
     );
 
     try {
+      // Upload payment image
       String fileName =
           'Booking_payments/${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference ref = FirebaseStorage.instance.ref().child(fileName);
@@ -51,17 +64,36 @@ class _BookingPaymentPage extends State<BookingPaymentPage> {
       TaskSnapshot snapshot = await uploadTask;
       String imageUrl = await snapshot.ref.getDownloadURL();
 
+      // Create booking
+      final bookingRef =
+          await FirebaseFirestore.instance.collection('Booking').add({
+        'userId': widget.userId,
+        'checkin-date': widget.startDate,
+        'checkout-date': widget.endDate,
+        'status': 'pending',
+        'full-price': widget.fullPrice,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Add booking-service reference
+      await FirebaseFirestore.instance.collection('Book-Service').add({
+        'BookingID': bookingRef.id,
+        'ServiceID': widget.serviceId,
+        'Price_Per_Day': widget.pricePerDay,
+      });
+
+      // Save payment record
       await FirebaseFirestore.instance.collection('Booking_Payment').add({
         'Date': Timestamp.now(),
         'Payment_image': imageUrl,
         'PaymentMethod': _paymentMethod,
-        'BookingID': widget.bookingId,
+        'BookingID': bookingRef.id,
       });
 
-      Navigator.of(context).pop(); // Remove loading
+      Navigator.of(context).pop(); // Close loading dialog
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Request was successfully sent')),
+        SnackBar(content: Text('Booking submitted successfully')),
       );
 
       Navigator.pushReplacement(
@@ -69,9 +101,9 @@ class _BookingPaymentPage extends State<BookingPaymentPage> {
         MaterialPageRoute(builder: (context) => ExplorePage()),
       );
     } catch (e) {
-      Navigator.of(context).pop(); // Remove loading
+      Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Something went wrong: $e')),
+        SnackBar(content: Text('Error: $e')),
       );
     }
   }
@@ -80,14 +112,8 @@ class _BookingPaymentPage extends State<BookingPaymentPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          "Your Payment method",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
-        ),
+        title: Text("Your Payment method"),
+        leading: BackButton(),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -105,10 +131,7 @@ class _BookingPaymentPage extends State<BookingPaymentPage> {
                 child: _selectedImage != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: Image.file(
-                          _selectedImage!,
-                          fit: BoxFit.cover,
-                        ),
+                        child: Image.file(_selectedImage!, fit: BoxFit.cover),
                       )
                     : Center(
                         child: Column(
@@ -117,9 +140,7 @@ class _BookingPaymentPage extends State<BookingPaymentPage> {
                             Icon(Icons.image, size: 50, color: Colors.grey),
                             SizedBox(height: 8),
                             Text("No image selected",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black)),
+                                style: TextStyle(fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -138,7 +159,7 @@ class _BookingPaymentPage extends State<BookingPaymentPage> {
                     });
                   },
                 ),
-                Text('OMT', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('OMT'),
                 SizedBox(width: 16),
                 Radio<String>(
                   value: 'Whish',
@@ -149,7 +170,7 @@ class _BookingPaymentPage extends State<BookingPaymentPage> {
                     });
                   },
                 ),
-                Text('Whish', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('Whish'),
               ],
             ),
             SizedBox(height: 20),

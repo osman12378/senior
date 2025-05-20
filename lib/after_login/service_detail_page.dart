@@ -110,7 +110,7 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
     }
   }
 
-  Future<void> placeBooking() async {
+  void goToPaymentPage() {
     if (startDate == null || endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -138,54 +138,23 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
       return;
     }
 
-    final pricePerDay = serviceData!['Price'] ?? 0;
     final days = endDate!.difference(startDate!).inDays;
-    final fullPrice = days * pricePerDay;
+    final double pricePerDay = (serviceData!['Price'] as num).toDouble();
+    final double fullPrice = days * pricePerDay;
 
-    try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator()),
-      );
-
-      // 1. Create Booking
-      final bookingRef = await _firestore.collection('Booking').add({
-        'userId': user.uid,
-        'checkin-date': startDate,
-        'checkout-date': endDate,
-        'status': 'pending',
-        'full-price': fullPrice,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      // 2. Create Book-Service mapping with pricePerDay
-      await _firestore.collection('Book-Service').add({
-        'BookingID': bookingRef.id,
-        'ServiceID': widget.serviceId,
-        'Price_Per_Day': pricePerDay,
-      });
-
-      Navigator.pop(context); // Close loading dialog
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (context) => BookingPaymentPage(bookingId: bookingRef.id)),
-      );
-      // Navigate to payment
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Booking request placed!"),
-            backgroundColor: Colors.green),
-      );
-    } catch (e) {
-      Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text("Booking failed: $e"), backgroundColor: Colors.red),
-      );
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BookingPaymentPage(
+          userId: user.uid,
+          serviceId: widget.serviceId,
+          startDate: startDate!,
+          endDate: endDate!,
+          pricePerDay: pricePerDay,
+          fullPrice: fullPrice,
+        ),
+      ),
+    );
   }
 
   @override
@@ -288,7 +257,7 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
             const SizedBox(height: 24),
             Center(
               child: ElevatedButton(
-                onPressed: placeBooking,
+                onPressed: goToPaymentPage,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigo,
                   padding:
@@ -297,7 +266,7 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                child: const Text("Place Booking",
+                child: const Text("Proceed to Payment",
                     style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
             ),
