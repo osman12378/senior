@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:senior/profile/profile.dart';
 import 'service_detail.dart';
 
 class TrackMyBookingsPage extends StatefulWidget {
@@ -131,6 +132,15 @@ class _TrackMyBookingsPageState extends State<TrackMyBookingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => ProfilePage()),
+            );
+          },
+        ),
         title: Text("My Bookings"),
         actions: [
           if (_selectedDateRange != null)

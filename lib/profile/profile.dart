@@ -41,34 +41,37 @@ class _ProfilePageState extends State<ProfilePage> {
 
     final now = Timestamp.now();
 
-    // Fetch the user's latest approved payment
     final payQuery = await FirebaseFirestore.instance
         .collection('Pay')
         .where('UserID', isEqualTo: user.uid)
         .where('Status', isEqualTo: 'approved')
         .get();
 
+    bool hasActiveSubscription = false;
+
     for (var doc in payQuery.docs) {
       final endDate = doc['EndDate'] as Timestamp;
 
-      if (now.compareTo(endDate) > 0) {
-        // End date expired – update user role
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update({
-          'role': 'renter',
-        });
+      if (now.compareTo(endDate) <= 0) {
+        hasActiveSubscription = true;
+        break;
+      }
+    }
 
-        // Mark all their services as deleted
-        final serviceQuery = await FirebaseFirestore.instance
-            .collection('Service')
-            .where('UserID', isEqualTo: user.uid)
-            .get();
+    if (!hasActiveSubscription) {
+      // No valid subscription — downgrade user and mark services as deleted
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({'role': 'renter'});
 
-        for (var serviceDoc in serviceQuery.docs) {
-          await serviceDoc.reference.update({'Deleted': true});
-        }
+      final serviceQuery = await FirebaseFirestore.instance
+          .collection('Service')
+          .where('UserID', isEqualTo: user.uid)
+          .get();
+
+      for (var serviceDoc in serviceQuery.docs) {
+        await serviceDoc.reference.update({'Deleted': true});
       }
     }
   }

@@ -24,6 +24,9 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
   DateTime? endDate;
   bool isLoading = true;
 
+  int selectedRating = 0;
+  double averageRating = 0.0;
+
   @override
   void initState() {
     super.initState();
@@ -79,10 +82,40 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
         if (addressDoc.exists) combinedExtra.addAll(addressDoc.data()!);
       }
 
+      final ratingsSnapshot = await _firestore
+          .collection('Review')
+          .where('ServiceID', isEqualTo: widget.serviceId)
+          .get();
+
+      double avgRating = 0.0;
+      int userRating = 0;
+
+      if (ratingsSnapshot.docs.isNotEmpty) {
+        final ratings = ratingsSnapshot.docs
+            .map((doc) => (doc['Rating'] as num).toDouble())
+            .toList();
+        avgRating = ratings.reduce((a, b) => a + b) / ratings.length;
+
+        // Check if user has rated
+        final user = _auth.currentUser;
+        if (user != null) {
+          try {
+            final userRatingDoc = ratingsSnapshot.docs.firstWhere(
+              (doc) => doc['UserID'] == user.uid,
+            );
+            userRating = (userRatingDoc['Rating'] as num).toInt();
+          } catch (e) {
+            // No rating found for this user, so leave userRating as 0 or default
+          }
+        }
+      }
+
       setState(() {
         serviceData = data;
         imageUrls = urls;
         extraData = combinedExtra;
+        averageRating = avgRating;
+        selectedRating = userRating;
         isLoading = false;
       });
     } catch (e) {
@@ -90,13 +123,110 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
     }
   }
 
+  Future<void> submitRating(int rating) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please log in to submit rating"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final ratingsQuery = await _firestore
+          .collection('Review')
+          .where('ServiceID', isEqualTo: widget.serviceId)
+          .where('UserID', isEqualTo: user.uid)
+          .limit(1)
+          .get();
+
+      if (ratingsQuery.docs.isNotEmpty) {
+        // Update existing rating
+        await _firestore
+            .collection('Review')
+            .doc(ratingsQuery.docs.first.id)
+            .update({'Rating': rating, 'Timestamp': DateTime.now()});
+      } else {
+        // Add new rating
+        await _firestore.collection('Review').add({
+          'ServiceID': widget.serviceId,
+          'UserID': user.uid,
+          'Rating': rating,
+          'Timestamp': DateTime.now(),
+        });
+      }
+
+      setState(() {
+        selectedRating = rating;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Rating submitted successfully!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Refresh the average rating
+      loadServiceDetails();
+    } catch (e) {
+      debugPrint("Error submitting rating: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Failed to submit rating"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Widget buildRatingStars() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: List.generate(5, (index) {
+            int starNumber = index + 1;
+            return IconButton(
+              icon: Icon(
+                selectedRating >= starNumber ? Icons.star : Icons.star_border,
+                color: Colors.amber,
+                size: 32,
+              ),
+              onPressed: () async {
+                setState(() {
+                  selectedRating = starNumber;
+                });
+                await submitRating(starNumber);
+              },
+            );
+          }),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            const Icon(Icons.star, color: Colors.amber, size: 20),
+            const SizedBox(width: 4),
+            Text(
+              "Average: ${averageRating.toStringAsFixed(1)}",
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Future<void> selectDate({required bool isStart}) async {
-    final now = DateTime.now();
+    DateTime initialDate = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: now,
-      firstDate: now,
-      lastDate: DateTime(now.year + 2),
+      initialDate: initialDate,
+      firstDate: DateTime(2022),
+      lastDate: DateTime(2100),
     );
 
     if (picked != null) {
@@ -111,47 +241,25 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
   }
 
   void goToPaymentPage() {
-    if (startDate == null || endDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Please select both start and end dates"),
-            backgroundColor: Colors.red),
-      );
-      return;
-    }
-
-    if (endDate!.isBefore(startDate!)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("End date must be after start date"),
-            backgroundColor: Colors.red),
-      );
-      return;
-    }
-
     final user = _auth.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("User not logged in"), backgroundColor: Colors.red),
-      );
-      return;
-    }
+    if (user == null) return;
 
-    final days = endDate!.difference(startDate!).inDays;
-    final double pricePerDay = (serviceData!['Price'] as num).toDouble();
-    final double fullPrice = days * pricePerDay;
+    final pricePerDay = (serviceData!['Price'] as num).toDouble();
+    if (startDate == null || endDate == null) return;
+
+    final totalDays = endDate!.difference(startDate!).inDays + 1;
+    final fullPrice = totalDays * pricePerDay;
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => BookingPaymentPage(
-          userId: user.uid,
           serviceId: widget.serviceId,
-          startDate: startDate!,
-          endDate: endDate!,
+          userId: user.uid,
           pricePerDay: pricePerDay,
           fullPrice: fullPrice,
+          startDate: startDate!,
+          endDate: endDate!,
         ),
       ),
     );
@@ -205,6 +313,19 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                 ),
               ),
             const SizedBox(height: 16),
+
+            // ⭐ Rating
+            const Text("Rate this Service",
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.indigo)),
+            const SizedBox(height: 8),
+            buildRatingStars(),
+            const Divider(),
+
+            // 📝 Description
+            const SizedBox(height: 16),
             const Text("Description",
                 style: TextStyle(
                     fontSize: 20,
@@ -215,6 +336,8 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                 style:
                     const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
+
+            // 📄 Details
             const Text("Details",
                 style: TextStyle(
                     fontSize: 20,
@@ -227,11 +350,15 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
             Text("Price: ${serviceData!['Price']}\$ per day",
                 style:
                     const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+
             if (extraData != null)
               ...extraData!.entries.map((entry) => Text(
-                  "${entry.key}: ${entry.value}",
-                  style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.bold))),
+                    "${entry.key}: ${entry.value}",
+                    style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.bold),
+                  )),
+
+            // 📅 Date Pickers
             const SizedBox(height: 24),
             Row(
               children: [
@@ -254,6 +381,7 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                 ),
               ],
             ),
+
             const SizedBox(height: 24),
             Center(
               child: ElevatedButton(

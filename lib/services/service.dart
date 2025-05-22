@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'address.dart';
 
 class ServiceFormPage extends StatefulWidget {
@@ -27,7 +24,6 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
   final TextEditingController priceController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
 
-  
   List<File> imageFiles = [];
   bool isLoading = false;
 
@@ -42,7 +38,7 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
     }
   }
 
-  Future<void> uploadService() async {
+  void goToNextPage() {
     if (!_formKey.currentState!.validate() || imageFiles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -52,54 +48,19 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
       return;
     }
 
-    setState(() => isLoading = true);
-
-    try {
-      final serviceRef = FirebaseFirestore.instance.collection('Service').doc();
-      final serviceId = serviceRef.id;
-
-      await serviceRef.set({
-        'Price': double.parse(priceController.text),
-        
-        'Description': descriptionController.text,
-        'CategoryID': widget.categoryId,
-        'UserID': widget.userId,
-        'AddressID': null,
-        'Type': widget.selectedType,
-        'Deleted': false,
-      });
-
-      for (int i = 0; i < imageFiles.length; i++) {
-        final ref = FirebaseStorage.instance
-            .ref()
-            .child('service_images/$serviceId/image_$i.jpg');
-
-        await ref.putFile(imageFiles[i]);
-        final url = await ref.getDownloadURL();
-
-        await FirebaseFirestore.instance.collection('Service Images').add({
-          'URL': url,
-          'ServiceID': serviceId,
-        });
-      }
-
-      setState(() => isLoading = false);
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => AddressFormPage(
-            serviceId: serviceId,
-            type: widget.selectedType,
-          ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddressFormPage(
+          categoryId: widget.categoryId,
+          userId: widget.userId,
+          selectedType: widget.selectedType,
+          price: double.parse(priceController.text),
+          description: descriptionController.text,
+          imageFiles: imageFiles,
         ),
-      );
-    } catch (e) {
-      setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ${e.toString()}")),
-      );
-    }
+      ),
+    );
   }
 
   @override
@@ -155,7 +116,7 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
                     ),
                     const SizedBox(height: 20),
                     ElevatedButton(
-                      onPressed: uploadService,
+                      onPressed: goToNextPage,
                       child: const Text("Continue to Address"),
                     ),
                   ],

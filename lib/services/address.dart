@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 
 class AddressFormPage extends StatefulWidget {
-  final String serviceId;
-  final String type;
+  final String categoryId;
+  final String userId;
+  final String selectedType;
+  final double price;
+  final String description;
+  final List<File> imageFiles;
 
   const AddressFormPage({
     super.key,
-    required this.serviceId,
-    required this.type,
+    required this.categoryId,
+    required this.userId,
+    required this.selectedType,
+    required this.price,
+    required this.description,
+    required this.imageFiles,
   });
 
   @override
@@ -22,7 +31,6 @@ class _AddressFormPageState extends State<AddressFormPage> {
   final TextEditingController buildingController = TextEditingController();
   final TextEditingController detailsController = TextEditingController();
 
-  // Car-related fields
   final TextEditingController modelController = TextEditingController();
   final TextEditingController colorController = TextEditingController();
   final TextEditingController carDetailsController = TextEditingController();
@@ -40,7 +48,36 @@ class _AddressFormPageState extends State<AddressFormPage> {
     setState(() => isLoading = true);
 
     try {
-      // Save address details in Address collection
+      // 1. Create service document
+      final serviceRef = FirebaseFirestore.instance.collection('Service').doc();
+      final serviceId = serviceRef.id;
+
+      await serviceRef.set({
+        'Price': widget.price,
+        'Description': widget.description,
+        'CategoryID': widget.categoryId,
+        'UserID': widget.userId,
+        'AddressID': null,
+        'Type': widget.selectedType,
+        'Deleted': false,
+      });
+
+      // 2. Upload images
+      for (int i = 0; i < widget.imageFiles.length; i++) {
+        final ref = FirebaseStorage.instance
+            .ref()
+            .child('service_images/$serviceId/image_$i.jpg');
+
+        await ref.putFile(widget.imageFiles[i]);
+        final url = await ref.getDownloadURL();
+
+        await FirebaseFirestore.instance.collection('Service Images').add({
+          'URL': url,
+          'ServiceID': serviceId,
+        });
+      }
+
+      // 3. Save address
       final addressRef = FirebaseFirestore.instance.collection('Address').doc();
       final addressId = addressRef.id;
 
@@ -50,8 +87,8 @@ class _AddressFormPageState extends State<AddressFormPage> {
         'Details': detailsController.text,
       });
 
-      // If the type is car, save car details in CarDescription collection
-      if (widget.type == 'Cars') {
+      // 4. Save car details if type is 'Cars'
+      if (widget.selectedType == 'Cars') {
         final carDescriptionRef =
             FirebaseFirestore.instance.collection('CarDescription').doc();
 
@@ -59,23 +96,21 @@ class _AddressFormPageState extends State<AddressFormPage> {
           'Model': modelController.text,
           'Color': colorController.text,
           'Details': carDetailsController.text,
-          'ServiceID': widget.serviceId, // Foreign key to Service collection
+          'ServiceID': serviceId,
         });
       }
 
-      // Update the Service collection with the AddressID
+      // 5. Update service with AddressID
       await FirebaseFirestore.instance
           .collection('Service')
-          .doc(widget.serviceId)
+          .doc(serviceId)
           .update({
         'AddressID': addressId,
       });
 
       setState(() => isLoading = false);
 
-      // Navigate to the next page or show success
-      Navigator.pop(
-          context); // This pops the current page to go back to the previous screen.
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Address and details saved successfully")),
       );
@@ -99,7 +134,6 @@ class _AddressFormPageState extends State<AddressFormPage> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Address Fields
                     TextFormField(
                       controller: streetController,
                       decoration: const InputDecoration(labelText: "Street"),
@@ -124,9 +158,7 @@ class _AddressFormPageState extends State<AddressFormPage> {
                           : null,
                     ),
                     const SizedBox(height: 20),
-
-                    // Car-related Fields if the type is car
-                    if (widget.type == 'Cars') ...[
+                    if (widget.selectedType == 'Cars') ...[
                       TextFormField(
                         controller: modelController,
                         decoration: const InputDecoration(labelText: "Model"),
@@ -153,8 +185,6 @@ class _AddressFormPageState extends State<AddressFormPage> {
                       ),
                     ],
                     const SizedBox(height: 20),
-
-                    // Submit Button
                     ElevatedButton(
                       onPressed: saveAddressAndCarDetails,
                       child: const Text("Save Address and Details"),

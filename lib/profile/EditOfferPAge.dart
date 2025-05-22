@@ -30,21 +30,61 @@ class _EditOfferPageState extends State<EditOfferPage> {
   final List<String> _durationUnits = ['hours', 'days'];
   DateTime? _selectedEndDate;
 
-  bool _isLoading = false;
+  bool _isLoading = true;
+  bool isDeleted = false;
 
   @override
   void initState() {
     super.initState();
-    _priceController.text = widget.currentPrice.toString();
+    _fetchOfferStatus();
+  }
 
-    final duration = widget.currentEndDate.difference(DateTime.now());
+  Future<void> _fetchOfferStatus() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('Offer')
+          .doc(widget.offerId)
+          .get();
+      if (doc.exists && doc.data() != null) {
+        setState(() {
+          isDeleted = !(doc['Availibility'] ?? true);
+          _priceController.text = widget.currentPrice.toString();
+          final duration = widget.currentEndDate.difference(DateTime.now());
 
-    if (duration.inHours <= 24) {
-      _selectedUnit = 'hours';
-      _durationValueController.text = duration.inHours.toString();
-    } else {
-      _selectedUnit = 'days';
-      _selectedEndDate = widget.currentEndDate;
+          if (duration.inHours <= 24) {
+            _selectedUnit = 'hours';
+            _durationValueController.text = duration.inHours.toString();
+          } else {
+            _selectedUnit = 'days';
+            _selectedEndDate = widget.currentEndDate;
+          }
+        });
+      }
+    } catch (e) {
+      print('Error fetching offer status: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _restoreOffer() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('Offer')
+          .doc(widget.offerId)
+          .update({'Availibility': true});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Offer restored successfully')),
+      );
+
+      setState(() {
+        isDeleted = false;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error restoring offer: $e')),
+      );
     }
   }
 
@@ -136,88 +176,112 @@ class _EditOfferPageState extends State<EditOfferPage> {
       appBar: AppBar(title: const Text('Edit Offer')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    TextFormField(
-                      controller: _priceController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d*')),
-                      ],
-                      decoration: const InputDecoration(
-                        labelText: 'Enter New Price',
-                        border: OutlineInputBorder(),
-                        prefixText: '\$',
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _selectedUnit,
-                      hint: const Text('Select Duration Unit'),
-                      items: _durationUnits.map((unit) {
-                        return DropdownMenuItem(
-                          value: unit,
-                          child: Text(unit),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          _selectedUnit = val;
-                          _durationValueController.clear();
-                          _selectedEndDate = null;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    if (_selectedUnit == 'hours')
-                      TextFormField(
-                        controller: _durationValueController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Number of Hours',
-                          border: OutlineInputBorder(),
+          : isDeleted
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'This offer has been deleted.',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
-                      )
-                    else if (_selectedUnit == 'days') ...[
-                      ElevatedButton(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _selectedEndDate ?? DateTime.now(),
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime(2100),
-                          );
-                          if (picked != null) {
-                            setState(() {
-                              _selectedEndDate = picked;
-                            });
-                          }
-                        },
-                        child: const Text('Pick End Date'),
-                      ),
-                      if (_selectedEndDate != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            'End Date: ${DateFormat.yMMMd().format(_selectedEndDate!)}',
-                            style: const TextStyle(fontSize: 16),
+                        const SizedBox(height: 12),
+                        const Text('You can restore this offer to edit it.'),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          onPressed: _restoreOffer,
+                          icon: const Icon(Icons.restore),
+                          label: const Text('Restore Offer'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: _priceController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d+\.?\d*')),
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'Enter New Price',
+                            border: OutlineInputBorder(),
+                            prefixText: '\$',
                           ),
                         ),
-                    ],
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: _updateOffer,
-                      child: const Text('Update Offer'),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: _selectedUnit,
+                          hint: const Text('Select Duration Unit'),
+                          items: _durationUnits.map((unit) {
+                            return DropdownMenuItem(
+                              value: unit,
+                              child: Text(unit),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedUnit = val;
+                              _durationValueController.clear();
+                              _selectedEndDate = null;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        if (_selectedUnit == 'hours')
+                          TextFormField(
+                            controller: _durationValueController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Number of Hours',
+                              border: OutlineInputBorder(),
+                            ),
+                          )
+                        else if (_selectedUnit == 'days') ...[
+                          ElevatedButton(
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _selectedEndDate ?? DateTime.now(),
+                                firstDate: DateTime.now(),
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  _selectedEndDate = picked;
+                                });
+                              }
+                            },
+                            child: const Text('Pick End Date'),
+                          ),
+                          if (_selectedEndDate != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                'End Date: ${DateFormat.yMMMd().format(_selectedEndDate!)}',
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            ),
+                        ],
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: _updateOffer,
+                          child: const Text('Update Offer'),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
     );
   }
 }
