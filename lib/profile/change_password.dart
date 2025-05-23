@@ -19,6 +19,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // New booleans for toggling obscure text
+  bool _obscureOldPassword = true;
+  bool _obscureNewPassword = true;
+  bool _obscureConfirmPassword = true;
+
   Future<void> _changePassword() async {
     setState(() {
       _isLoading = true;
@@ -50,6 +55,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       );
 
       await user.reauthenticateWithCredential(credential);
+
+      // If reauthentication is successful, update password
       await user.updatePassword(_newPasswordController.text);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -61,21 +68,33 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         context,
         MaterialPageRoute(builder: (context) => EditProfile()),
       );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password') {
+        setState(() {
+          _errorMessage = "Wrong old password!";
+        });
+      } else {
+        setState(() {
+          _errorMessage = "Failed to change password: ";
+        });
+      }
     } catch (e) {
       setState(() {
-        _errorMessage = "Failed to change password: $e";
+        _errorMessage = "Failed to change password:";
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
       });
     }
-
-    setState(() {
-      _isLoading = false;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: Colors.white,
-      appBar: AppBar(backgroundColor: Colors.white,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
@@ -95,35 +114,77 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Old Password TextField with obscure toggle
               TextField(
                 controller: _oldPasswordController,
-                obscureText: true,
+                obscureText: _obscureOldPassword,
                 decoration: InputDecoration(
-                  labelText: "enter your old Password",
+                  labelText: "Enter your old Password",
                   prefixIcon: Icon(Icons.lock),
                   border: OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureOldPassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureOldPassword = !_obscureOldPassword;
+                      });
+                    },
+                  ),
                 ),
               ),
               SizedBox(height: 23),
+
+              // New Password TextField with obscure toggle
               TextField(
                 controller: _newPasswordController,
-                obscureText: true,
+                obscureText: _obscureNewPassword,
                 decoration: InputDecoration(
-                  labelText: "enter a new Password",
+                  labelText: "Enter a new Password",
                   prefixIcon: Icon(Icons.lock_outline),
                   border: OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureNewPassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureNewPassword = !_obscureNewPassword;
+                      });
+                    },
+                  ),
                 ),
               ),
               SizedBox(height: 23),
+
+              // Confirm Password TextField with obscure toggle
               TextField(
                 controller: _confirmPasswordController,
-                obscureText: true,
+                obscureText: _obscureConfirmPassword,
                 decoration: InputDecoration(
                   labelText: "Confirm New Password",
                   prefixIcon: Icon(Icons.lock_outline),
                   border: OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirmPassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                      });
+                    },
+                  ),
                 ),
               ),
+
               if (_errorMessage != null) ...[
                 SizedBox(height: 10),
                 Text(
@@ -132,7 +193,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 ),
               ],
               SizedBox(height: 40),
-          
+
               // Change Password Button
               Center(
                 child: ElevatedButton(
