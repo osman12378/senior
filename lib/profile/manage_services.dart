@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'EditServicePage.dart';
 
@@ -73,11 +72,12 @@ class _ManageServicesPageState extends State<ManageServicesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+    return Scaffold(backgroundColor: Colors.white,
+      appBar: AppBar(backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
         title: const Text(
           'Manage Services',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 35),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 23),
         ),
         centerTitle: false,
       ),

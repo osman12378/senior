@@ -5,110 +5,192 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'manage_services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class ManageUsersPage extends StatelessWidget {
+class ManageUsersPage extends StatefulWidget {
+  @override
+  _ManageUsersPageState createState() => _ManageUsersPageState();
+}
+
+class _ManageUsersPageState extends State<ManageUsersPage> {
+  String selectedRole = 'Premium Host'; // default category
+  String searchText = '';
+
   @override
   Widget build(BuildContext context) {
     return Theme(
       data: ThemeData.light(),
       child: Scaffold(
-        body: StreamBuilder(
-          stream: FirebaseFirestore.instance.collection('users').snapshots(),
-          builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            }
-
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return Center(child: Text("No users found"));
-            }
-
-            return ListView.builder(
-              itemCount: snapshot.data!.docs.length,
-              itemBuilder: (context, index) {
-                var userDoc = snapshot.data!.docs[index];
-                var data = userDoc.data() as Map<String, dynamic>;
-                String userId = userDoc.id;
-                String name = data['username'] ?? 'Unknown';
-                String email = data['email'] ?? 'No email available';
-                bool isActive = data['status'] ?? false; // User status
-                String profilePicPath = 'profiles/$userId.jpg';
-
-                return FutureBuilder<String>(
-                  future: FirebaseStorage.instance
-                      .ref(profilePicPath)
-                      .getDownloadURL(),
-                  builder: (context, imageSnapshot) {
-                    if (imageSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return ListTile(
-                        leading:
-                            CircleAvatar(child: CircularProgressIndicator()),
-                        title: Text(name),
-                        subtitle: Text(email),
-                      );
-                    }
-
-                    String profilePicUrl =
-                        imageSnapshot.hasData ? imageSnapshot.data! : '';
-
-                    return ListTile(
-                      leading: ClipOval(
-                        child: CachedNetworkImage(
-                          imageUrl:
-                              profilePicUrl.isNotEmpty ? profilePicUrl : '',
-                          placeholder: (context, url) =>
-                              CircularProgressIndicator(),
-                          errorWidget: (context, url, error) =>
-                              Icon(Icons.person),
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.cover,
+        backgroundColor: Colors.white,
+        body: Column(
+          children: [
+            // 🔹 Category Selector
+            AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: ['Premium Host', 'Host', 'renter'].map((role) {
+                  bool isSelected = selectedRole == role;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedRole = role;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: Duration(milliseconds: 200),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.indigo : Colors.grey[200],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        role.toUpperCase(),
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      title: Text(name),
-                      subtitle: Text(email),
-                      trailing: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isActive ? Colors.red : Colors.green,
-                          foregroundColor: Colors.black,
-                        ),
-                        onPressed: () {
-                          String adminId =
-                              FirebaseAuth.instance.currentUser!.uid;
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
 
-                          FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(userId)
-                              .update({
-                            'status': !isActive, // Toggle status
-                            'adminId':
-                                adminId, // Save admin ID responsible for the change
-                          }).then((_) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(isActive
-                                      ? 'User Deactivated'
-                                      : 'User Activated')),
-                            );
-                          });
+            // 🔹 Search Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: TextField(
+                decoration: InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Search by username',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    searchText = value.trim();
+                  });
+                },
+              ),
+            ),
+
+            // 🔹 Users List
+            Expanded(
+              child: StreamBuilder(
+                stream:
+                    FirebaseFirestore.instance.collection('users').snapshots(),
+                builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Center(child: Text("No users found"));
+                  }
+
+                  // Filter users by selected role AND username search substring (case insensitive)
+                  final filteredUsers = snapshot.data!.docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final roleMatch = data['role'] == selectedRole;
+                    final username = (data['username'] ?? '').toString();
+                    final searchMatch = searchText.isEmpty
+                        ? true
+                        : username
+                            .toLowerCase()
+                            .contains(searchText.toLowerCase());
+                    return roleMatch && searchMatch;
+                  }).toList();
+
+                  if (filteredUsers.isEmpty) {
+                    return Center(
+                        child: Text(
+                            "No $selectedRole users found matching \"$searchText\""));
+                  }
+
+                  return ListView.builder(
+                    itemCount: filteredUsers.length,
+                    itemBuilder: (context, index) {
+                      var userDoc = filteredUsers[index];
+                      var data = userDoc.data() as Map<String, dynamic>;
+                      String userId = userDoc.id;
+                      String name = data['username'] ?? 'Unknown';
+                      String email = data['email'] ?? 'No email available';
+                      bool isActive = data['status'] ?? false;
+                      String profilePicPath = 'profiles/$userId.jpg';
+
+                      return FutureBuilder<String>(
+                        future: FirebaseStorage.instance
+                            .ref(profilePicPath)
+                            .getDownloadURL(),
+                        builder: (context, imageSnapshot) {
+                          String profilePicUrl =
+                              imageSnapshot.hasData ? imageSnapshot.data! : '';
+
+                          return ListTile(
+                            leading: ClipOval(
+                              child: CachedNetworkImage(
+                                imageUrl: profilePicUrl.isNotEmpty
+                                    ? profilePicUrl
+                                    : '',
+                                placeholder: (context, url) =>
+                                    CircularProgressIndicator(),
+                                errorWidget: (context, url, error) =>
+                                    Icon(Icons.person),
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            title: Text(name),
+                            subtitle: Text(email),
+                            trailing: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    isActive ? Colors.red : Colors.green,
+                                foregroundColor: Colors.black,
+                              ),
+                              onPressed: () {
+                                String adminId =
+                                    FirebaseAuth.instance.currentUser!.uid;
+                                FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(userId)
+                                    .update({
+                                  'status': !isActive,
+                                  'adminId': adminId,
+                                }).then((_) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(isActive
+                                          ? 'User Deactivated'
+                                          : 'User Activated'),
+                                    ),
+                                  );
+                                });
+                              },
+                              child: Text(isActive ? 'Deactivate' : 'Activate'),
+                            ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      UserServicesPage(userId: userId),
+                                ),
+                              );
+                            },
+                          );
                         },
-                        child: Text(isActive ? 'Deactivate' : 'Activate'),
-                      ),
-                      onTap: () {
-                        // Navigate to the user's service management page
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => UserServicesPage(userId: userId),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            );
-          },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );

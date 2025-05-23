@@ -11,69 +11,69 @@ class Fourthpage extends StatelessWidget {
       body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: ListView(
-            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 32.0),
+            padding:
+                EdgeInsets.all(16.0), // Optional: add padding to the list view
             children: <Widget>[
-              // Title
-              Center(
-                child: Text(
-                  'In-App\nChat\nSupport',
-                  textAlign: TextAlign.center,
+              // Title: "In-App Chat Support" in purple, centered
+              Text(
+                'In-App\nChat\nSupport', // Combined title text
+                textAlign: TextAlign.center, // Center the title text
+                style: TextStyle(
+                  fontSize: 48, // Big font size
+                  fontWeight: FontWeight.bold,
+                  color: Colors.indigo, // Purple color
+                ),
+              ),
+              SizedBox(height: 15), // Add some spacing
+              // Body text as a single block
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
                   style: TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.indigo,
+                    fontSize: 33,
+                    color: Colors.black, // Black color for the body text
+                    fontWeight: FontWeight.bold, // Make the body text bold
                   ),
-                ),
-              ),
-              SizedBox(height: 15),
-
-              // Body text
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    style: TextStyle(
-                      fontSize: 30,
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
+                  children: [
+                    TextSpan(
+                      text:
+                          'Need help or have questions? Renters and owners can chat instantly within the app. Resolve issues, discuss details, and ensure a smooth rental experience, all in one place',
                     ),
-                    children: [
-                      TextSpan(
-                        text:
-                            'Need help or have questions? Renters and owners can chat instantly within the app. Resolve issues, discuss details, and ensure a smooth rental experience, all in one place',
+                    TextSpan(
+                      text: ' Rent',
+                    ),
+                    TextSpan(
+                      text: 'X',
+                      style: TextStyle(
+                        color: Colors.orange, // Orange color for "X"
                       ),
-                      TextSpan(text: ' Rent'),
-                      TextSpan(
-                        text: 'X',
-                        style: TextStyle(color: Colors.orange),
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 60), // Add some spacing
+              // Next button with purple background and white text
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => WelcomePage()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      Colors.indigo, // Purple background for the button
+                  padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                ),
+                child: Text(
+                  'Next',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.white, // White text for the button
                   ),
                 ),
               ),
-              SizedBox(height: 30),
-
-              // Next button
-              Center(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => WelcomePage()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                  ),
-                  child: Text(
-                    'Next',
-                    style: TextStyle(fontSize: 18, color: Colors.white),
-                  ),
-                ),
-              ),
-              SizedBox(height: 100),
+              SizedBox(height: 100), // Add some spacing at the bottom
             ],
           )),
     );

@@ -38,11 +38,7 @@ class _ManageOffersState extends State<ManageOffers> {
       List<String> serviceIds =
           serviceSnapshot.docs.map((doc) => doc.id).toList();
 
-      print("Fetched services: ${serviceSnapshot.docs.length}");
-      print("Service IDs: $serviceIds");
-
       if (serviceIds.isEmpty) {
-        print('No services found for user: $userId');
         setState(() {
           offers = [];
           isLoading = false;
@@ -55,12 +51,20 @@ class _ManageOffersState extends State<ManageOffers> {
           .where('serviceID', whereIn: serviceIds)
           .get();
 
-      print("Fetched offers: ${offerSnapshot.docs.length}");
-
       List<Map<String, dynamic>> fetchedOffers = [];
 
       for (var offerDoc in offerSnapshot.docs) {
         final serviceId = offerDoc['serviceID'];
+
+        final matchingDocs =
+            serviceSnapshot.docs.where((s) => s.id == serviceId);
+        if (matchingDocs.isEmpty) continue; // Skip if no matching service
+
+        final serviceDoc = matchingDocs.first;
+        final serviceData = serviceDoc.data() as Map<String, dynamic>;
+
+        // Skip services marked as deleted
+        if (serviceData['Deleted'] == true) continue;
 
         QuerySnapshot serviceImagesSnapshot = await FirebaseFirestore.instance
             .collection('Service Images')
@@ -72,12 +76,9 @@ class _ManageOffersState extends State<ManageOffers> {
             ? serviceImagesSnapshot.docs.first['URL']
             : 'assets/default_avatar.jpg';
 
-        final serviceDoc =
-            serviceSnapshot.docs.firstWhere((s) => s.id == serviceId);
-
         fetchedOffers.add({
           'offerId': offerDoc.id,
-          'serviceDescription': serviceDoc['Description'],
+          'serviceDescription': serviceData['Description'],
           'price': offerDoc['price'],
           'endTime': (offerDoc['endTime'] as Timestamp).toDate(),
           'imageUrl': imageUrl,
@@ -145,7 +146,7 @@ class _ManageOffersState extends State<ManageOffers> {
                   },
                   child: AnimatedContainer(
                     duration: Duration(milliseconds: 250),
-                    padding: EdgeInsets.symmetric(horizontal: 35, vertical: 10),
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                     decoration: BoxDecoration(
                       color: isSelected ? Colors.indigo : Colors.grey[300],
                       borderRadius: BorderRadius.circular(20),
@@ -209,10 +210,8 @@ class _ManageOffersState extends State<ManageOffers> {
                                             TextButton(
                                               child: Text('Yes'),
                                               onPressed: () {
-                                                Navigator.of(context)
-                                                    .pop(); // Close dialog
-                                                deleteOffer(
-                                                    offer['offerId']); // Delete
+                                                Navigator.of(context).pop();
+                                                deleteOffer(offer['offerId']);
                                               },
                                             ),
                                           ],

@@ -73,82 +73,79 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> _signUp() async {
-    if (_passwordController.text != _confirmPasswordController.text) {
-      setState(() {
-        _passwordError = "Passwords do not match";
-      });
-      return;
+  if (_usernameController.text.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Please enter a username")),
+    );
+    return; // Stop the sign-up process
+  }
+
+  if (_passwordController.text != _confirmPasswordController.text) {
+    setState(() {
+      _passwordError = "Passwords do not match";
+    });
+    return;
+  }
+
+  setState(() {
+    showspinner = true;
+  });
+
+  try {
+    UserCredential userCredential =
+        await _auth.createUserWithEmailAndPassword(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
+
+    String? imageUrl;
+
+    if (_selectedImage != null) {
+      String userId = userCredential.user!.uid;
+      imageUrl = await _uploadImage(_selectedImage!, userId);
     }
 
-    setState(() {
-      showspinner = true; // Show spinner while signing up
+    await _firestore.collection("users").doc(userCredential.user!.uid).set({
+      "username": _usernameController.text.trim(),
+      "email": _emailController.text.trim(),
+      "phone": phoneNumber,
+      "address": _addressController.text.trim(),
+      "role": "renter",
+      "status": true,
+      "image_url": imageUrl,
     });
 
-    try {
-      // Create a user with email and password
-      UserCredential userCredential =
-          await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
+  } on FirebaseAuthException catch (e) {
+    String errorMessage = "An error occurred. Please try again.";
 
-      String? imageUrl; // Default to null in case no image is selected
-
-      // Upload image if selected
-      if (_selectedImage != null) {
-        String userId = userCredential.user!.uid;
-        print("Uploading image for user with ID: $userId");
-        imageUrl =
-            await _uploadImage(_selectedImage!, userId); // Upload and get URL
-        if (imageUrl == null) {
-          print("Image upload failed");
-          // Handle upload failure (e.g., show error to user)
-        }
-      }
-
-      // Store user data in Firestore
-      await _firestore.collection("users").doc(userCredential.user!.uid).set({
-        "username": _usernameController.text,
-        "email": _emailController.text,
-        "phone": phoneNumber,
-        "address": _addressController.text,
-        "role": "renter",
-        "status": true,
-        // Only add image_url if an image was uploaded successfully
-        if (imageUrl != null) "image_url": imageUrl,
-      });
-
-      // Navigate to the login page after successful sign-up
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => LoginPage()),
-      );
-    } on FirebaseAuthException catch (e) {
-      String errorMessage = "An error occurred. Please try again.";
-
-      if (e.code == 'email-already-in-use') {
-        errorMessage = "This email is already registered. Please log in.";
-      } else if (e.code == 'weak-password') {
-        errorMessage = "Your password is too weak. Try a stronger one.";
-      } else if (e.code == 'invalid-email') {
-        errorMessage = "The email address is not valid.";
-      } else if (e.code == 'operation-not-allowed') {
-        errorMessage = "Sign up with email/password is not allowed.";
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ${e.toString()}")),
-      );
-    } finally {
-      setState(() {
-        showspinner = false; // Hide spinner after sign-up attempt
-      });
+    if (e.code == 'email-already-in-use') {
+      errorMessage = "This email is already registered. Please log in.";
+    } else if (e.code == 'weak-password') {
+      errorMessage = "Your password is too weak. Try a stronger one.";
+    } else if (e.code == 'invalid-email') {
+      errorMessage = "The email address is not valid.";
+    } else if (e.code == 'operation-not-allowed') {
+      errorMessage = "Sign up with email/password is not allowed.";
     }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(errorMessage)),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error: ${e.toString()}")),
+    );
+  } finally {
+    setState(() {
+      showspinner = false;
+    });
   }
+}
+
 
   Widget _buildTextField(
       TextEditingController controller, String hintText, IconData icon,
@@ -196,9 +193,10 @@ class _SignUpPageState extends State<SignUpPage> {
     return Theme(
       data: ThemeData.light(),
       child: Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.black),
+            icon: Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
           backgroundColor: Colors.white10,

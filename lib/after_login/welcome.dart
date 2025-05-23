@@ -60,29 +60,49 @@ class _WelcomePageState extends State<WelcomePage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Container(
         color: Colors.white10, // Set background to white
-        child: Center(
-          child: username == null
-              ? SizedBox()
-              : FadeTransition(
-                  opacity: _fadeAnimation,
+        child:         Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (username == null)
+              const SizedBox()
+            else
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.indigo.withOpacity(0.2),
+                        
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   child: Text(
                     "Hello, $username!👋",
                     style: GoogleFonts.pacifico(
                       fontSize: 35,
                       fontWeight: FontWeight.w600,
-                      color: Colors.indigo, // Set font color to indigo
+                      color: Colors.indigo,
                       shadows: [
-                        Shadow(
+                        const Shadow(
                           blurRadius: 5.0,
                           color: Colors.black26,
                           offset: Offset(3, 3),
                         ),
                       ],
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
+              ),
+          ],
         ),
       ),
     );

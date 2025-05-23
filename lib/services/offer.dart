@@ -12,91 +12,80 @@ class OfferPage extends StatefulWidget {
 }
 
 class _OfferPageState extends State<OfferPage> {
-  final _auth = FirebaseAuth.instance;
-  final _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  List<DocumentSnapshot> _allServices = [];
-  List<DocumentSnapshot> _filteredServices = [];
-  List<DocumentSnapshot> _categories = [];
+  List<DocumentSnapshot> userServices = [];
   DocumentSnapshot? selectedService;
-  String? _selectedCategoryId;
 
-  final _priceController = TextEditingController();
-  final _durationValueController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _durationValueController =
+      TextEditingController();
+
   String? _selectedUnit;
-  final _durationUnits = ['hours', 'days'];
+  final List<String> _durationUnits = ['hours', 'days'];
   DateTime? selectedEndDate;
+
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadCategories();
-    _loadServices();
+    fetchUserServices();
   }
 
-  Future<void> _loadCategories() async {
-    final catSnap = await _firestore.collection('Category').get();
-    setState(() {
-      _categories = catSnap.docs;
-    });
-  }
-
-  Future<void> _loadServices() async {
+  Future<void> fetchUserServices() async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return;
 
-    final svcSnap = await _firestore
+    final servicesQuery = await _firestore
         .collection('Service')
         .where('UserID', isEqualTo: userId)
         .get();
 
-    // filter out deleted
-    final svcs = svcSnap.docs
-        .where(
-            (d) => !(d.data().containsKey('Deleted') && d['Deleted'] == true))
-        .toList();
+    final services = servicesQuery.docs.where((doc) {
+      return doc.data().containsKey('Deleted') ? doc['Deleted'] == false : true;
+    }).toList();
 
-    // filter out those with active offers
-    final ids = svcs.map((d) => d.id).toList();
-    final offerSnap = await _firestore
+    final serviceIds = services.map((s) => s.id).toList();
+
+    final offersQuery = await _firestore
         .collection('Offer')
-        .where('serviceID', whereIn: ids.isEmpty ? ['none'] : ids)
+        .where('serviceID', whereIn: serviceIds)
         .get();
+
     final now = DateTime.now();
-    final activeIds = <String>{};
-    for (var o in offerSnap.docs) {
-      final end = (o['endTime'] as Timestamp).toDate();
-      if (end.isAfter(now)) activeIds.add(o['serviceID']);
+
+    final activeOfferServiceIds = <String>{};
+
+    for (final offer in offersQuery.docs) {
+      final endTime = (offer['endTime'] as Timestamp).toDate();
+      if (endTime.isAfter(now)) {
+        activeOfferServiceIds.add(offer['serviceID']);
+      }
     }
 
     setState(() {
-      _allServices = svcs.where((d) => !activeIds.contains(d.id)).toList();
-      _applyCategoryFilter();
+      userServices = services.where((service) {
+        return !activeOfferServiceIds.contains(service.id);
+      }).toList();
     });
   }
 
-  void _applyCategoryFilter() {
-    if (_selectedCategoryId == null) {
-      _filteredServices = List.from(_allServices);
-    } else {
-      _filteredServices = _allServices
-          .where((d) => d['CategoryID'] == _selectedCategoryId)
-          .toList();
-    }
-  }
-
-  Future<String?> _fetchFirstImage(String id) async {
-    final imgSnap = await _firestore
+  Future<String?> fetchFirstImage(String serviceId) async {
+    final imagesSnapshot = await _firestore
         .collection('Service Images')
-        .where('ServiceID', isEqualTo: id)
+        .where('ServiceID', isEqualTo: serviceId)
         .limit(1)
         .get();
-    if (imgSnap.docs.isNotEmpty) return imgSnap.docs.first['URL'];
+
+    if (imagesSnapshot.docs.isNotEmpty) {
+      return imagesSnapshot.docs.first['URL'] as String;
+    }
     return null;
   }
 
-  Future<void> _submitOffer() async {
+  Future<void> submitOffer() async {
     if (selectedService == null ||
         _priceController.text.isEmpty ||
         _selectedUnit == null ||
@@ -110,15 +99,16 @@ class _OfferPageState extends State<OfferPage> {
 
     DateTime endTime;
     final now = DateTime.now();
+
     if (_selectedUnit == 'hours') {
-      final h = int.tryParse(_durationValueController.text) ?? 0;
-      if (h <= 0) {
+      final int? durationValue = int.tryParse(_durationValueController.text);
+      if (durationValue == null || durationValue <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Enter a valid number of hours')),
         );
         return;
       }
-      endTime = now.add(Duration(hours: h));
+      endTime = now.add(Duration(hours: durationValue));
     } else {
       final days = selectedEndDate!.difference(now).inDays + 1;
       if (days <= 0) {
@@ -138,12 +128,14 @@ class _OfferPageState extends State<OfferPage> {
     }
 
     setState(() => _isLoading = true);
+
     try {
-      final price = double.tryParse(_priceController.text) ?? 0;
-      if (price <= 0) {
+      double? price = double.tryParse(_priceController.text);
+      if (price == null || price <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Enter a valid price greater than 0')),
         );
+        setState(() => _isLoading = false);
         return;
       }
 
@@ -156,16 +148,16 @@ class _OfferPageState extends State<OfferPage> {
       });
 
       setState(() {
-        _allServices.remove(selectedService);
+        userServices.remove(selectedService);
         selectedService = null;
         _selectedUnit = null;
         selectedEndDate = null;
-        _applyCategoryFilter();
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Offer submitted successfully')),
       );
+
       _priceController.clear();
       _durationValueController.clear();
     } catch (e) {
@@ -186,154 +178,76 @@ class _OfferPageState extends State<OfferPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Good-Luck with your offer'),
+    return Scaffold(backgroundColor: Colors.white,
+      appBar: AppBar(backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        title: const Text('Add offer'),
         centerTitle: true,
+
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16.0),
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    // ── Category Chips ─────────────────────────────────
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            // "All" chip
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedCategoryId = null;
-                                  _applyCategoryFilter();
-                                });
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 10, horizontal: 16),
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 6),
-                                decoration: BoxDecoration(
-                                  color: _selectedCategoryId == null
-                                      ? Colors.deepPurple
-                                      : Colors.grey.shade200,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Text(
-                                  "All",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: userServices.length,
+                      itemBuilder: (context, index) {
+                        final service = userServices[index];
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedService = service;
+                            });
+                          },
+                          child: Card(
+                            color: selectedService?.id == service.id
+                                ? Colors.blue.shade100
+                                : null,
+                            child: ListTile(
+                              title: Text(service['Description'] ?? 'Unnamed'),
+                              subtitle: Text('Price: \$${service['Price']}'),
+                              leading: FutureBuilder<String?>(
+                                future: fetchFirstImage(service.id),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const SizedBox(
+                                      height: 50,
+                                      width: 50,
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  } else if (snapshot.hasData) {
+                                    return CachedNetworkImage(
+                                      imageUrl: snapshot.data!,
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) =>
+                                          const CircularProgressIndicator(),
+                                      errorWidget: (context, url, error) =>
+                                          const Icon(Icons.error),
+                                    );
+                                  } else {
+                                    return const Icon(
+                                        Icons.image_not_supported);
+                                  }
+                                },
                               ),
+                              trailing: selectedService?.id == service.id
+                                  ? const Icon(Icons.check_circle,
+                                      color: Colors.green)
+                                  : null,
                             ),
-
-                            // category chips
-                            ..._categories.map((cat) {
-                              final cid = cat.id;
-                              final name = cat['Name'];
-                              final isSel = cid == _selectedCategoryId;
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedCategoryId = cid;
-                                    _applyCategoryFilter();
-                                  });
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 300),
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 10, horizontal: 16),
-                                  margin:
-                                      const EdgeInsets.symmetric(horizontal: 6),
-                                  decoration: BoxDecoration(
-                                    color: isSel
-                                        ? Colors.deepPurple
-                                        : Colors.grey.shade200,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    name,
-                                    style: TextStyle(
-                                      color:
-                                          isSel ? Colors.white : Colors.black87,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // ── Service List ──────────────────────────────────
-                    _filteredServices.isEmpty
-                        ? const Center(child: Text("No services found"))
-                        : ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _filteredServices.length,
-                            itemBuilder: (ctx, i) {
-                              final svc = _filteredServices[i];
-                              final isSel = svc.id == selectedService?.id;
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    selectedService = svc;
-                                  });
-                                },
-                                child: Card(
-                                  color: isSel ? Colors.blue.shade100 : null,
-                                  child: ListTile(
-                                    leading: FutureBuilder<String?>(
-                                      future: _fetchFirstImage(svc.id),
-                                      builder: (c, snap) {
-                                        if (snap.connectionState ==
-                                            ConnectionState.waiting) {
-                                          return const SizedBox(
-                                            width: 50,
-                                            height: 50,
-                                            child: CircularProgressIndicator(),
-                                          );
-                                        }
-                                        if (snap.hasData) {
-                                          return CachedNetworkImage(
-                                            imageUrl: snap.data!,
-                                            width: 50,
-                                            height: 50,
-                                            fit: BoxFit.cover,
-                                          );
-                                        }
-                                        return const Icon(
-                                            Icons.image_not_supported);
-                                      },
-                                    ),
-                                    title: Text(
-                                      svc['Description'] ?? 'Unnamed',
-                                    ),
-                                    subtitle: Text('Price: \$${svc['Price']}'),
-                                    trailing: isSel
-                                        ? const Icon(Icons.check_circle,
-                                            color: Colors.green)
-                                        : null,
-                                  ),
-                                ),
-                              );
-                            },
                           ),
+                        );
+                      },
+                    ),
                     const SizedBox(height: 16),
-
-                    // ── Price Input ───────────────────────────────────
                     TextFormField(
                       controller: _priceController,
                       keyboardType:
@@ -349,27 +263,24 @@ class _OfferPageState extends State<OfferPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // ── Duration Unit ─────────────────────────────────
                     DropdownButtonFormField<String>(
                       value: _selectedUnit,
                       hint: const Text('Select Duration Unit'),
-                      items: _durationUnits
-                          .map((u) => DropdownMenuItem(
-                                value: u,
-                                child: Text(u),
-                              ))
-                          .toList(),
-                      onChanged: (v) {
+                      items: _durationUnits.map((unit) {
+                        return DropdownMenuItem(
+                          value: unit,
+                          child: Text(unit),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
                         setState(() {
-                          _selectedUnit = v;
+                          _selectedUnit = val;
                           _durationValueController.clear();
                           selectedEndDate = null;
                         });
                       },
                     ),
                     const SizedBox(height: 16),
-
                     if (_selectedUnit == 'hours')
                       TextFormField(
                         controller: _durationValueController,
@@ -390,7 +301,9 @@ class _OfferPageState extends State<OfferPage> {
                                 DateTime.now().add(const Duration(days: 365)),
                           );
                           if (picked != null) {
-                            setState(() => selectedEndDate = picked);
+                            setState(() {
+                              selectedEndDate = picked;
+                            });
                           }
                         },
                         child: const Text('Pick End Date'),
@@ -405,10 +318,8 @@ class _OfferPageState extends State<OfferPage> {
                         ),
                     ],
                     const SizedBox(height: 24),
-
-                    // ── Submit Button ────────────────────────────────
                     ElevatedButton(
-                      onPressed: _submitOffer,
+                      onPressed: submitOffer,
                       child: const Text('Submit Offer'),
                     ),
                   ],

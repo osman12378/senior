@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:senior/chat/chat_page.dart';
 import 'package:senior/after_login/wishlist.dart';
 import 'package:senior/after_login/Explore.dart';
@@ -33,17 +32,22 @@ class _MyWidgetState extends State<MessagesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         automaticallyImplyLeading: false,
         title: const Text(
-          'messages page',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 35),
+          'Messages',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         centerTitle: false,
       ),
       body: _buildUserList(),
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
+        
         currentIndex: 2,
         selectedItemColor: Colors.indigo,
         unselectedItemColor: Colors.black,

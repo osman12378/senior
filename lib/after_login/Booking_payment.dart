@@ -44,7 +44,7 @@ class _BookingPaymentPage extends State<BookingPaymentPage> {
   void _handleSubmit() async {
     if (_selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select an image')),
+        SnackBar(content: Text('Please select an image'), backgroundColor: Colors.red,),
       );
       return;
     }
@@ -110,8 +110,9 @@ class _BookingPaymentPage extends State<BookingPaymentPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+    return Scaffold(backgroundColor: Colors.white,
+      appBar: AppBar(backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
         title: Text("Your Payment method"),
         leading: BackButton(),
       ),
@@ -125,8 +126,9 @@ class _BookingPaymentPage extends State<BookingPaymentPage> {
                 height: 250,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: Colors.grey[200],
                   borderRadius: BorderRadius.circular(16),
+                  
                 ),
                 child: _selectedImage != null
                     ? ClipRRect(

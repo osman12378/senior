@@ -19,7 +19,7 @@ class _ApprovedPageState extends State<ApprovedPage> {
 
     return Theme(
       data: ThemeData.light(),
-      child: Scaffold(
+      child: Scaffold(backgroundColor: Colors.white,
         body: StreamBuilder(
           stream: FirebaseFirestore.instance
               .collection('Pay')

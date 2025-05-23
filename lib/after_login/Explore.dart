@@ -8,9 +8,7 @@ import 'package:senior/profile/profile.dart';
 import 'package:senior/after_login/service_detail_page.dart';
 
 class ExplorePage extends StatefulWidget {
-  final String? initialCategory;
-
-  const ExplorePage({Key? key, this.initialCategory}) : super(key: key);
+  const ExplorePage({Key? key}) : super(key: key);
 
   @override
   _ExplorePageState createState() => _ExplorePageState();
@@ -24,6 +22,8 @@ class _ExplorePageState extends State<ExplorePage> {
   List<Map<String, dynamic>> _services = [];
   Map<String, bool> _favoriteStatus = {};
   bool _isLoading = false;
+
+  
 
   @override
   void initState() {
@@ -248,6 +248,7 @@ class _ExplorePageState extends State<ExplorePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text.rich(
           TextSpan(
@@ -277,6 +278,7 @@ class _ExplorePageState extends State<ExplorePage> {
         ),
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 3,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
@@ -361,11 +363,13 @@ class _ExplorePageState extends State<ExplorePage> {
                         padding: const EdgeInsets.all(8.0),
                         child: TextField(
                           decoration: InputDecoration(
+                            fillColor: Colors.grey[100],
                             hintText: "Start your search",
-                            suffixIcon: const Icon(Icons.search),
+                            suffixIcon: const Icon(Icons.search, color: Colors.black),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                               borderSide: BorderSide.none,
+                              
                             ),
                             filled: true,
                             contentPadding: EdgeInsets.symmetric(
@@ -406,6 +410,7 @@ class _ExplorePageState extends State<ExplorePage> {
                             );
                           },
                           child: Card(
+                            color: Colors.white,
                             margin: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 8),
                             shape: RoundedRectangleBorder(
@@ -497,6 +502,7 @@ class _ExplorePageState extends State<ExplorePage> {
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
         currentIndex: 0,
         selectedItemColor: Colors.indigo,
         unselectedItemColor: Colors.black,

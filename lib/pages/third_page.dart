@@ -16,12 +16,15 @@ class ThirdPage extends StatelessWidget {
           crossAxisAlignment:
               CrossAxisAlignment.center, // Center the content horizontally
           children: <Widget>[
+            SizedBox(
+              height: 18
+            ),
             // Title: "Find & Rent with Ease" in purple, centered
             Text(
               'List & Earn\nSeamlessly', // Combined title text
               textAlign: TextAlign.center, // Center the title text
               style: TextStyle(
-                fontSize: 55, // Big font size
+                fontSize: 50, // Big font size
                 fontWeight: FontWeight.bold,
                 color: Colors.indigo, // Purple color
               ),
@@ -67,19 +70,19 @@ class ThirdPage extends StatelessWidget {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    Colors.indigo, // Purple background for the button
-                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-              ),
-              child: Text(
-                'Next',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.white, // White text for the button
+                  backgroundColor:
+                      Colors.indigo, // Purple background for the button
+                  padding: EdgeInsets.symmetric(horizontal: 140, vertical: 15),
+                ),
+                child: Text(
+                  'Next',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.white, // White text for the button
+                  ),
                 ),
               ),
-            ),
-            SizedBox(height: 100), // Add some spacing at the bottom
+              SizedBox(height: 100), // Add some spacing at the bottom
           ],
         ),
       ),

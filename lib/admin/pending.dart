@@ -12,7 +12,7 @@ class PendingPage extends StatelessWidget {
 
     return Theme(
       data: ThemeData.light(),
-      child: Scaffold(
+      child: Scaffold(backgroundColor: Colors.white,
         body: StreamBuilder(
           stream: FirebaseFirestore.instance
               .collection('Pay')

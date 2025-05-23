@@ -71,8 +71,9 @@ class _SelectState extends State<Select> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+    return Scaffold(backgroundColor: Colors.white,
+      appBar: AppBar(backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         title: const Text('Select Category'),
         elevation: 0,
       ),

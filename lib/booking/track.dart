@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:senior/profile/profile.dart';
 import 'service_detail.dart';
 
 class TrackMyBookingsPage extends StatefulWidget {
@@ -131,16 +130,10 @@ class _TrackMyBookingsPageState extends State<TrackMyBookingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => ProfilePage()),
-            );
-          },
-        ),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         title: Text("My Bookings"),
         actions: [
           if (_selectedDateRange != null)

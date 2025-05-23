@@ -149,11 +149,14 @@ class _EditServicePageState extends State<EditServicePage> {
     if (confirm != true) return;
 
     try {
-      // Mark the service as deleted (soft delete)
+      // Mark the service as deleted (soft delete) and record that it was deleted by the user
       await FirebaseFirestore.instance
           .collection('Service')
           .doc(widget.serviceId)
-          .update({'Deleted': true});
+          .update({
+        'Deleted': true,
+        'deletedbyuser': true,
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Service marked as deleted')),

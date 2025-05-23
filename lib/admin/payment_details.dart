@@ -64,6 +64,13 @@ class PaymentDetailsPage extends StatelessWidget {
             .get();
 
         for (var doc in userServices.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+
+          // Skip services if deleted by user or created by admin
+          if (data['deletedbyuser'] == true || data.containsKey('adminId')) {
+            continue;
+          }
+
           await doc.reference.update({'Deleted': false});
         }
       }
@@ -97,7 +104,11 @@ class PaymentDetailsPage extends StatelessWidget {
     return Theme(
       data: ThemeData.light(),
       child: Scaffold(
-        appBar: AppBar(title: Text("Payment Review")),
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+            title: Text("Payment Review")),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(

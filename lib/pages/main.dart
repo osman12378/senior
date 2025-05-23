@@ -56,7 +56,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 Text(
                   'Rent',
                   style: TextStyle(
-                    fontSize: 96,
+                    fontSize: 80,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
@@ -64,7 +64,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 Text(
                   'X',
                   style: TextStyle(
-                    fontSize: 96,
+                    fontSize: 80,
                     fontWeight: FontWeight.bold,
                     color: Colors.orange,
                   ),
@@ -86,7 +86,6 @@ class _SplashScreenState extends State<SplashScreen> {
                       color: Colors.black,
                     ),
                   ),
-                  SizedBox(height: 5),
                   Text(
                     'LIU Students',
                     style: TextStyle(
@@ -95,6 +94,7 @@ class _SplashScreenState extends State<SplashScreen> {
                       color: Colors.indigo,
                     ),
                   ),
+                  SizedBox(height: 45)
                 ],
               ),
             ),

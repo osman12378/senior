@@ -121,12 +121,16 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        surfaceTintColor: Colors.white,
+        automaticallyImplyLeading: false,
         title: const Text(
           'Profile',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 35),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: false,
+        backgroundColor: Colors.white,
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _userData,
@@ -138,130 +142,172 @@ class _ProfilePageState extends State<ProfilePage> {
             return const Center(child: Text("Error loading data"));
           }
           final userData = snapshot.data!;
-          return ListView(
-            children: [
-              ListTile(
-                leading: CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.grey.shade300,
-                  child: ClipOval(
-                    child: CachedNetworkImage(
-                      imageUrl: userData["image"],
-                      placeholder: (context, url) =>
-                          const CircularProgressIndicator(),
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.person, size: 40),
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(30),
+                        bottomRight: Radius.circular(30),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundImage:
+                              CachedNetworkImageProvider(userData["image"]),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          userData["name"],
+                          style: const TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 5),
+                      
+                      ],
                     ),
                   ),
-                ),
-                title: Text(
-                  userData["name"],
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-                subtitle: const Text("Edit profile"),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => EditProfile()),
-                  );
-                },
-              ),
-              const Divider(indent: 15, endIndent: 15, color: Colors.black),
-              const SizedBox(height: 5),
-              SizedBox(
-                height: 20,
-              ),
-              ListTile(
-                title: const Text("   Track bookings"),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => TrackMyBookingsPage()),
-                  );
-                },
-              ),
-              const Divider(indent: 15, endIndent: 15, color: Colors.black),
-
-              // Role-based UI section
-              // Role-based UI section
-              if (userData["role"] == "renter") ...[
-                ListTile(
-                  title: const Text("   Become a host"),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => SubscriptionPage()),
-                    );
-                  },
-                ),
-                const Divider(indent: 15, endIndent: 15, color: Colors.black),
-              ] else if (userData["role"] == "Host" ||
-                  userData["role"] == "Premium Host") ...[
-                ListTile(
-                  title: const Text("   Manage bookings"),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ManageBooking()),
-                    ).then((_) {
-                      // This runs when you come back from ServicePage
-                      setState(() {
-                        _userData = getUserData(); // refresh user data
-                      });
-                    });
-                  },
-                ),
-                const Divider(indent: 15, endIndent: 15, color: Colors.black),
-                ListTile(
-                  title: const Text("   RentX a service"),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => Select()),
-                    ).then((_) {
-                      // This runs when you come back from ServicePage
-                      setState(() {
-                        _userData = getUserData(); // refresh user data
-                      });
-                    });
-                  },
-                ),
-                const Divider(indent: 15, endIndent: 15, color: Colors.black),
-                ListTile(
-                  title: const Text("   Manage Service"),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ManageServicesPage()),
-                    ).then((_) {
-                      // This runs when you come back from ServicePage
-                      setState(() {
-                        _userData = getUserData(); // refresh user data
-                      });
-                    });
-                  },
-                ),
-                const Divider(indent: 15, endIndent: 15, color: Colors.black),
-                if (userData["role"] == "Premium Host") ...[
+              
+                  const SizedBox(height: 5),
+                    ListTile(
+                    title: const Text("Edit profile"),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => EditProfile()),
+                      );
+                    },
+                  ),
+                                const Divider(indent: 15, endIndent: 15, color: Colors.black),
+              
+                
                   ListTile(
-                    title: const Text("   RentX an offer"),
+                    title: const Text("Track bookings"),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => TrackMyBookingsPage()),
+                      );
+                    },
+                  ),
+                  const Divider(indent: 15, endIndent: 15, color: Colors.black),
+              
+                  // Role-based UI section
+                  // Role-based UI section
+                  if (userData["role"] == "renter") ...[
+                    ListTile(
+                      title: const Text("Become a host"),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => SubscriptionPage()),
+                        );
+                      },
+                    ),
+                    const Divider(indent: 15, endIndent: 15, color: Colors.black),
+                  ] else if (userData["role"] == "Host" ||
+                      userData["role"] == "Premium Host") ...[
+                    ListTile(
+                      title: const Text("Manage bookings"),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => ManageBooking()),
+                        ).then((_) {
+                          // This runs when you come back from ServicePage
+                          setState(() {
+                            _userData = getUserData(); // refresh user data
+                          });
+                        });
+                      },
+                    ),
+                    const Divider(indent: 15, endIndent: 15, color: Colors.black),
+                    ListTile(
+                      title: const Text("RentX a service"),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => Select()),
+                        ).then((_) {
+                          // This runs when you come back from ServicePage
+                          setState(() {
+                            _userData = getUserData(); // refresh user data
+                          });
+                        });
+                      },
+                    ),
+                    const Divider(indent: 15, endIndent: 15, color: Colors.black),
+                    ListTile(
+                      title: const Text("Manage Service"),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => ManageServicesPage()),
+                        ).then((_) {
+                          // This runs when you come back from ServicePage
+                          setState(() {
+                            _userData = getUserData(); // refresh user data
+                          });
+                        });
+                      },
+                    ),
+                    const Divider(indent: 15, endIndent: 15, color: Colors.black),
+                    if (userData["role"] == "Premium Host") ...[
+                      ListTile(
+                        title: const Text("RentX an offer"),
+                        trailing: const Icon(Icons.arrow_forward_ios),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => OfferPage()),
+                          ).then((_) {
+                            // This runs when you come back from ServicePage
+                            setState(() {
+                              _userData = getUserData(); // refresh user data
+                            });
+                          });
+                        },
+                      ),
+                      const Divider(indent: 15, endIndent: 15, color: Colors.black),
+                      ListTile(
+                        title: const Text("Manage Offer"),
+                        trailing: const Icon(Icons.arrow_forward_ios),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => ManageOffers()),
+                          ).then((_) {
+                            // This runs when you come back from ServicePage
+                            setState(() {
+                              _userData = getUserData(); // refresh user data
+                            });
+                          });
+                        },
+                      ),
+                      const Divider(indent: 15, endIndent: 15, color: Colors.black),
+                    ],
+                  ],
+              
+                  ListTile(
+                    title: const Text("Login & security"),
                     trailing: const Icon(Icons.arrow_forward_ios),
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => OfferPage()),
+                        MaterialPageRoute(builder: (_) => ChangePasswordPage()),
                       ).then((_) {
                         // This runs when you come back from ServicePage
                         setState(() {
@@ -271,80 +317,48 @@ class _ProfilePageState extends State<ProfilePage> {
                     },
                   ),
                   const Divider(indent: 15, endIndent: 15, color: Colors.black),
-                  ListTile(
-                    title: const Text("   Manage Offer"),
-                    trailing: const Icon(Icons.arrow_forward_ios),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => ManageOffers()),
-                      ).then((_) {
-                        // This runs when you come back from ServicePage
-                        setState(() {
-                          _userData = getUserData(); // refresh user data
-                        });
-                      });
-                    },
+                  const SizedBox(height: 40),
+                  Center(
+                    child: const Text(
+                      "from",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
                   ),
-                  const Divider(indent: 15, endIndent: 15, color: Colors.black),
+                  Center(
+                    child: const Text(
+                      "LIU Students",
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  TextButton(
+                    onPressed: () async {
+                      await _auth.signOut();
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => LoginPage()),
+                        (route) => false,
+                      );
+                    },
+                    child: const Text(
+                      "Log out",
+                      style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 25,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ],
-              ],
-
-              ListTile(
-                title: const Text("   Login & security"),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ChangePasswordPage()),
-                  ).then((_) {
-                    // This runs when you come back from ServicePage
-                    setState(() {
-                      _userData = getUserData(); // refresh user data
-                    });
-                  });
-                },
               ),
-              const Divider(indent: 15, endIndent: 15, color: Colors.black),
-              const SizedBox(height: 40),
-              Center(
-                child: const Text(
-                  "from",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-              ),
-              Center(
-                child: const Text(
-                  "LIU Students",
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.indigo),
-                ),
-              ),
-              const SizedBox(height: 40),
-              TextButton(
-                onPressed: () async {
-                  await _auth.signOut();
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => LoginPage()),
-                    (route) => false,
-                  );
-                },
-                child: const Text(
-                  "Log out",
-                  style: TextStyle(
-                      color: Colors.red,
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
+            ),
           );
         },
       ),
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
         currentIndex: 3,
         selectedItemColor: Colors.indigo,
         unselectedItemColor: Colors.black,

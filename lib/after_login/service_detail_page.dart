@@ -23,7 +23,7 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
   DateTime? startDate;
   DateTime? endDate;
   bool isLoading = true;
-
+  num fullPrice = 0;
   int selectedRating = 0;
   double averageRating = 0.0;
 
@@ -185,9 +185,10 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
 
   Widget buildRatingStars() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(5, (index) {
             int starNumber = index + 1;
             return IconButton(
@@ -197,6 +198,8 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                 size: 32,
               ),
               onPressed: () async {
+                Navigator.of(context).pop(); // Close the bottom sheet
+
                 setState(() {
                   selectedRating = starNumber;
                 });
@@ -206,35 +209,47 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
           }),
         ),
         const SizedBox(height: 4),
-        Row(
-          children: [
-            const Icon(Icons.star, color: Colors.amber, size: 20),
-            const SizedBox(width: 4),
-            Text(
-              "Average: ${averageRating.toStringAsFixed(1)}",
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
       ],
     );
   }
 
   Future<void> selectDate({required bool isStart}) async {
-    DateTime initialDate = DateTime.now();
+    final now = DateTime.now();
+    DateTime initialDate = now;
+    DateTime firstDate = now;
+    DateTime lastDate = DateTime(now.year + 2);
+
+    if (!isStart && startDate != null) {
+      // For end date, don't allow before start date
+      initialDate = startDate!.add(const Duration(days: 1));
+      firstDate = initialDate;
+    }
+
     final picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
-      firstDate: DateTime(2022),
-      lastDate: DateTime(2100),
+      firstDate: firstDate,
+      lastDate: lastDate,
     );
 
     if (picked != null) {
       setState(() {
         if (isStart) {
           startDate = picked;
+          // Reset endDate if it's before new startDate
+          if (endDate != null && endDate!.isBefore(startDate!)) {
+            endDate = null;
+          }
         } else {
           endDate = picked;
+        }
+
+        if (startDate != null && endDate != null && serviceData != null) {
+          final days = endDate!.difference(startDate!).inDays;
+          final pricePerDay = serviceData!['Price'] ?? 0;
+          fullPrice = (days > 0) ? days * pricePerDay : 0;
+        } else {
+          fullPrice = 0;
         }
       });
     }
@@ -244,8 +259,17 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
     final user = _auth.currentUser;
     if (user == null) return;
 
+    if (startDate == null || endDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please select both start and end dates."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final pricePerDay = (serviceData!['Price'] as num).toDouble();
-    if (startDate == null || endDate == null) return;
 
     final totalDays = endDate!.difference(startDate!).inDays + 1;
     final fullPrice = totalDays * pricePerDay;
@@ -275,14 +299,15 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
       return const Scaffold(body: Center(child: Text("Service not found")));
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Service Details",
-            style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
-                color: Colors.indigo)),
-      ),
+    return Scaffold(backgroundColor: Colors.white,
+      appBar: AppBar(backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+          title: const Text(
+        "Service Details",
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+        ),
+      )),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
@@ -315,28 +340,56 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
             const SizedBox(height: 16),
 
             // ⭐ Rating
-            const Text("Rate this Service",
-                style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.indigo)),
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      builder: (context) {
+                        return Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                "Rate this Service",
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 16),
+                              buildRatingStars(),
+                              
+                              const SizedBox(height: 16),
+                            
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                          },
+                  child: const Text("Rate this Service",
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo)),
+                ),
+                Spacer(),
+                Icon(Icons.star),
+                Text(
+                  "${averageRating.toStringAsFixed(1)}",
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+              Text(
+              serviceData!['Description'] ?? '',
+            ),
             const SizedBox(height: 8),
-            buildRatingStars(),
             const Divider(),
-
-            // 📝 Description
-            const SizedBox(height: 16),
-            const Text("Description",
-                style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.indigo)),
-            const SizedBox(height: 8),
-            Text(serviceData!['Description'] ?? 'No description provided',
-                style:
-                    const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-
             // 📄 Details
             const Text("Details",
                 style: TextStyle(
@@ -344,45 +397,36 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                     fontWeight: FontWeight.bold,
                     color: Colors.indigo)),
             const SizedBox(height: 8),
-            Text("Type: ${serviceData!['Type']}",
-                style:
-                    const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-            Text("Price: ${serviceData!['Price']}\$ per day",
-                style:
-                    const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            Text(
+              "Type: ${serviceData!['Type']}",
+            ),
+            Text(
+              "Price: ${serviceData!['Price']}\$ per day",
+            ),
 
             if (extraData != null)
               ...extraData!.entries.map((entry) => Text(
                     "${entry.key}: ${entry.value}",
-                    style: const TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.bold),
                   )),
 
             // 📅 Date Pickers
             const SizedBox(height: 24),
+            Center(
+              child: Text("Total: \$${fullPrice.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => selectDate(isStart: true),
-                    child: Text(startDate == null
-                        ? "Start Date"
-                        : "Start: ${startDate!.toLocal().toString().split(' ')[0]}"),
-                  ),
-                ),
+                
+                _buildStartDATEButton(),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => selectDate(isStart: false),
-                    child: Text(endDate == null
-                        ? "End Date"
-                        : "End: ${endDate!.toLocal().toString().split(' ')[0]}"),
-                  ),
-                ),
+                _buildEndDATEButton(),
               ],
             ),
-
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
+            
             Center(
               child: ElevatedButton(
                 onPressed: goToPaymentPage,
@@ -391,7 +435,7 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 60, vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(15),
                   ),
                 ),
                 child: const Text("Proceed to Payment",
@@ -399,6 +443,90 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStartDATEButton() {
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          selectDate(isStart: true);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                spreadRadius: 5,
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.calendar_today_outlined,
+                  size: 15, color: Colors.grey[700]),
+              const SizedBox(width: 8),
+              Text(
+                startDate == null
+                    ? "Start Date"
+                    : "${startDate!.toLocal().toString().split(' ')[0]}",
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[800],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEndDATEButton() {
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          selectDate(isStart: false);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                spreadRadius: 5,
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.calendar_today_outlined,
+                  size: 15, color: Colors.grey[700]),
+              const SizedBox(width: 8),
+              Text(
+                endDate == null
+                    ? "End Date"
+                    : "${endDate!.toLocal().toString().split(' ')[0]}",
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[800],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

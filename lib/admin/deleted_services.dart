@@ -11,8 +11,9 @@ class DeletedServicesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Theme(
       data: ThemeData.light(),
-      child: Scaffold(
-        appBar: AppBar(
+      child: Scaffold(backgroundColor: Colors.white,
+        appBar: AppBar(backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
           title: Text('Deleted Services'),
         ),
         body: StreamBuilder(

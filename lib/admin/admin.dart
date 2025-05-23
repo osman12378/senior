@@ -52,8 +52,9 @@ class _AdminPageState extends State<AdminPage> {
   Widget build(BuildContext context) {
     return Theme(
       data: ThemeData.light(),
-      child: Scaffold(
-        appBar: AppBar(
+      child: Scaffold(backgroundColor: Colors.white,
+        appBar: AppBar(backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
           title: Text(
               _titles[_selectedIndex]), // Change title based on selected index
           automaticallyImplyLeading: false,
@@ -73,6 +74,7 @@ class _AdminPageState extends State<AdminPage> {
               _selectedIndex], // Display the appropriate page based on the index
         ),
         bottomNavigationBar: BottomNavigationBar(
+          backgroundColor: Colors.white,
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
           selectedItemColor: Colors.indigo,

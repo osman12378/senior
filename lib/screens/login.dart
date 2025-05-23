@@ -42,7 +42,7 @@ class _LoginPageState extends State<LoginPage> {
           if (isBlocked) {
             // Blocked user message
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("You are blocked at the moment.")),
+              SnackBar(content: Text("You are blocked at the moment."), backgroundColor: Colors.red,),
             );
             return;
           }
@@ -69,7 +69,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       print("Login failed: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Login failed. Please check your credentials.")),
+        SnackBar(content: Text("Login failed. Please check your credentials."), backgroundColor: Colors.red,),
       );
     }
   }
