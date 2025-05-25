@@ -152,24 +152,67 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
                                     isActive ? Colors.red : Colors.green,
                                 foregroundColor: Colors.black,
                               ),
-                              onPressed: () {
+                              onPressed: () async {
                                 String adminId =
                                     FirebaseAuth.instance.currentUser!.uid;
-                                FirebaseFirestore.instance
+                                bool newStatus = !isActive;
+
+                                // Update user status
+                                await FirebaseFirestore.instance
                                     .collection('users')
                                     .doc(userId)
                                     .update({
-                                  'status': !isActive,
+                                  'status': newStatus,
                                   'adminId': adminId,
-                                }).then((_) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(isActive
-                                          ? 'User Deactivated'
-                                          : 'User Activated'),
-                                    ),
-                                  );
                                 });
+
+                                // Reference to the Service collection
+                                final serviceRef = FirebaseFirestore.instance
+                                    .collection('Service');
+
+                                if (!newStatus) {
+                                  // 🔻 Deactivating user: mark all their services as deleted
+                                  final userServices = await serviceRef
+                                      .where('UserID', isEqualTo: userId)
+                                      .get();
+
+                                  WriteBatch batch =
+                                      FirebaseFirestore.instance.batch();
+                                  for (var doc in userServices.docs) {
+                                    batch.update(
+                                        doc.reference, {'Deleted': true});
+                                  }
+                                  await batch.commit();
+                                } else {
+                                  // 🔼 Activating user: only restore services NOT deleted by user or created by admin
+                                  final userServices = await serviceRef
+                                      .where('UserID', isEqualTo: userId)
+                                      .get();
+
+                                  for (var doc in userServices.docs) {
+                                    final data =
+                                        doc.data() as Map<String, dynamic>;
+
+                                    // Skip services if deleted by user or created by admin
+                                    if (data['deletedbyuser'] == true ||
+                                        data.containsKey('adminId')) {
+                                      continue;
+                                    }
+
+                                    await doc.reference
+                                        .update({'Deleted': false});
+                                  }
+                                }
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      newStatus
+                                          ? 'User Activated and Services Restored'
+                                          : 'User Deactivated and Services Hidden',
+                                    ),
+                                  ),
+                                );
                               },
                               child: Text(isActive ? 'Deactivate' : 'Activate'),
                             ),
