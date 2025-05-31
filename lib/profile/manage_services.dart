@@ -18,11 +18,27 @@ class _ManageServicesPageState extends State<ManageServicesPage> {
   List<DocumentSnapshot> _categories = [];
   String? _selectedCategoryId;
 
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     userId = FirebaseAuth.instance.currentUser?.uid ?? '';
     _loadData();
+
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+        _applyFilters();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -30,7 +46,7 @@ class _ManageServicesPageState extends State<ManageServicesPage> {
     QuerySnapshot categorySnapshot =
         await FirebaseFirestore.instance.collection('Category').get();
 
-    // Fetch services
+    // Fetch services for current user and not deleted
     QuerySnapshot serviceSnapshot = await FirebaseFirestore.instance
         .collection('Service')
         .where('UserID', isEqualTo: userId)
@@ -47,13 +63,30 @@ class _ManageServicesPageState extends State<ManageServicesPage> {
   void _onCategorySelected(String? categoryId) {
     setState(() {
       _selectedCategoryId = categoryId;
-      if (categoryId == null) {
-        _filteredServices = _allServices;
-      } else {
-        _filteredServices = _allServices
-            .where((doc) => doc['CategoryID'] == categoryId)
-            .toList();
-      }
+      _applyFilters();
+    });
+  }
+
+  void _applyFilters() {
+    List<DocumentSnapshot> tempServices = _allServices;
+
+    // Filter by category
+    if (_selectedCategoryId != null) {
+      tempServices = tempServices
+          .where((doc) => doc['CategoryID'] == _selectedCategoryId)
+          .toList();
+    }
+
+    // Filter by search query in Description
+    if (_searchQuery.isNotEmpty) {
+      tempServices = tempServices.where((doc) {
+        final desc = (doc['Description'] ?? '').toString().toLowerCase();
+        return desc.contains(_searchQuery);
+      }).toList();
+    }
+
+    setState(() {
+      _filteredServices = tempServices;
     });
   }
 
@@ -72,9 +105,11 @@ class _ManageServicesPageState extends State<ManageServicesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: Colors.white,
-      appBar: AppBar(backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         title: const Text(
           'Manage Services',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 23),
@@ -84,6 +119,8 @@ class _ManageServicesPageState extends State<ManageServicesPage> {
       body: Column(
         children: [
           const SizedBox(height: 12),
+
+          // Categories horizontal list
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: SingleChildScrollView(
@@ -99,8 +136,8 @@ class _ManageServicesPageState extends State<ManageServicesPage> {
                       margin: const EdgeInsets.symmetric(horizontal: 6),
                       decoration: BoxDecoration(
                         color: _selectedCategoryId == null
-                            ? Colors.deepPurple
-                            : Colors.grey.shade200,
+                            ? Colors.indigo
+                            : Colors.grey.shade500,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Center(
@@ -127,9 +164,8 @@ class _ManageServicesPageState extends State<ManageServicesPage> {
                             vertical: 10, horizontal: 16),
                         margin: const EdgeInsets.symmetric(horizontal: 6),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.deepPurple
-                              : Colors.grey.shade200,
+                          color:
+                              isSelected ? Colors.indigo : Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Center(
@@ -145,6 +181,24 @@ class _ManageServicesPageState extends State<ManageServicesPage> {
                     );
                   }).toList(),
                 ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: 'Search Service...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
               ),
             ),
           ),

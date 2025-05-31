@@ -191,7 +191,11 @@ class _AddressFormPageState extends State<AddressFormPage> {
                     const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: saveAddressAndCarDetails,
-                      child: const Text("Save Address and Details"),
+                      child: const Text("Save Address and Details", style: TextStyle(color: Colors.white),),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            Colors.indigo, // Set background color to blue
+                      ),
                     ),
                   ],
                 ),

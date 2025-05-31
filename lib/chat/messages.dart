@@ -18,14 +18,35 @@ class _MyWidgetState extends State<MessagesPage> {
 
   void _onItemTapped(int index) {
     if (index == 0) {
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => ExplorePage()));
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const ExplorePage(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
     } else if (index == 1) {
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => WishlistPage()));
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const WishlistPage(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
     } else if (index == 3) {
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => ProfilePage()));
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const ProfilePage(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
     }
   }
 
@@ -47,7 +68,6 @@ class _MyWidgetState extends State<MessagesPage> {
       body: _buildUserList(),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
-        
         currentIndex: 2,
         selectedItemColor: Colors.indigo,
         unselectedItemColor: Colors.black,
@@ -125,10 +145,10 @@ class _MyWidgetState extends State<MessagesPage> {
         ),
         const Divider(
           height: 1,
-          thickness: 2,
+          thickness: 0.5,
           indent: 72,
           endIndent: 16,
-          color: Colors.grey,
+          color: Colors.black,
         ),
       ],
     );

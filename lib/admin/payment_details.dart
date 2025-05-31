@@ -75,7 +75,7 @@ class PaymentDetailsPage extends StatelessWidget {
 
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Status updated to $newStatus')),
+        SnackBar(content: Text('Status updated to $newStatus'), backgroundColor: Colors.green,),
       );
     } catch (e) {
       print("Error updating status: $e");

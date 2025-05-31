@@ -17,8 +17,8 @@ class _SignUpPageState extends State<SignUpPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  final ImagePicker _picker = ImagePicker();
 
+  final ImagePicker _picker = ImagePicker();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -33,17 +33,6 @@ class _SignUpPageState extends State<SignUpPage> {
   String? _passwordError;
   File? _selectedImage;
   String phoneNumber = "";
-
-  void _validatePassword() {
-    setState(() {
-      if (_confirmPasswordController.text.isNotEmpty &&
-          _confirmPasswordController.text != _passwordController.text) {
-        _passwordError = "Passwords do not match";
-      } else {
-        _passwordError = null;
-      }
-    });
-  }
 
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -73,79 +62,78 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> _signUp() async {
-  if (_usernameController.text.trim().isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Please enter a username")),
-    );
-    return; // Stop the sign-up process
-  }
-
-  if (_passwordController.text != _confirmPasswordController.text) {
-    setState(() {
-      _passwordError = "Passwords do not match";
-    });
-    return;
-  }
-
-  setState(() {
-    showspinner = true;
-  });
-
-  try {
-    UserCredential userCredential =
-        await _auth.createUserWithEmailAndPassword(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
-
-    String? imageUrl;
-
-    if (_selectedImage != null) {
-      String userId = userCredential.user!.uid;
-      imageUrl = await _uploadImage(_selectedImage!, userId);
+    if (_usernameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Please enter a username")),
+      );
+      return; // Stop the sign-up process
     }
 
-    await _firestore.collection("users").doc(userCredential.user!.uid).set({
-      "username": _usernameController.text.trim(),
-      "email": _emailController.text.trim(),
-      "phone": phoneNumber,
-      "address": _addressController.text.trim(),
-      "role": "renter",
-      "status": true,
-      "image_url": imageUrl,
-    });
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => LoginPage()),
-    );
-  } on FirebaseAuthException catch (e) {
-    String errorMessage = "An error occurred. Please try again.";
-
-    if (e.code == 'email-already-in-use') {
-      errorMessage = "This email is already registered. Please log in.";
-    } else if (e.code == 'weak-password') {
-      errorMessage = "Your password is too weak. Try a stronger one.";
-    } else if (e.code == 'invalid-email') {
-      errorMessage = "The email address is not valid.";
-    } else if (e.code == 'operation-not-allowed') {
-      errorMessage = "Sign up with email/password is not allowed.";
+    if (_passwordController.text != _confirmPasswordController.text) {
+      setState(() {
+        _passwordError = "Passwords do not match";
+      });
+      return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(errorMessage)),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Error: ${e.toString()}")),
-    );
-  } finally {
     setState(() {
-      showspinner = false;
+      showspinner = true;
     });
-  }
-}
 
+    try {
+      UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      String? imageUrl;
+
+      if (_selectedImage != null) {
+        String userId = userCredential.user!.uid;
+        imageUrl = await _uploadImage(_selectedImage!, userId);
+      }
+
+      await _firestore.collection("users").doc(userCredential.user!.uid).set({
+        "username": _usernameController.text.trim(),
+        "email": _emailController.text.trim(),
+        "phone": phoneNumber,
+        "address": _addressController.text.trim(),
+        "role": "renter",
+        "status": true,
+        "image_url": imageUrl,
+      });
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = "An error occurred. Please try again.";
+
+      if (e.code == 'email-already-in-use') {
+        errorMessage = "This email is already registered. Please log in.";
+      } else if (e.code == 'weak-password') {
+        errorMessage = "Your password is too weak. Try a stronger one.";
+      } else if (e.code == 'invalid-email') {
+        errorMessage = "The email address is not valid.";
+      } else if (e.code == 'operation-not-allowed') {
+        errorMessage = "Sign up with email/password is not allowed.";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: ${e.toString()}")),
+      );
+    } finally {
+      setState(() {
+        showspinner = false;
+      });
+    }
+  }
 
   Widget _buildTextField(
       TextEditingController controller, String hintText, IconData icon,

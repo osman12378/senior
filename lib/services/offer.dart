@@ -15,12 +15,14 @@ class _OfferPageState extends State<OfferPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  List<DocumentSnapshot> userServices = [];
+  List<DocumentSnapshot> allServices = [];
+  List<DocumentSnapshot> filteredServices = [];
   DocumentSnapshot? selectedService;
 
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _durationValueController =
       TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   String? _selectedUnit;
   final List<String> _durationUnits = ['hours', 'days'];
@@ -28,10 +30,29 @@ class _OfferPageState extends State<OfferPage> {
 
   bool _isLoading = false;
 
+  List<Map<String, String>> categories = [];
+  String selectedCategoryId = "All";
+
   @override
   void initState() {
     super.initState();
-    fetchUserServices();
+    fetchCategoriesAndServices();
+    _searchController.addListener(filterServices);
+  }
+
+  Future<void> fetchCategoriesAndServices() async {
+    final categorySnapshot = await _firestore.collection('Category').get();
+    categories = [
+      {'id': 'All', 'name': 'All'},
+      ...categorySnapshot.docs.map((doc) => {
+            'id': doc.id,
+            'name': (doc['Name'] is List)
+                ? (doc['Name'] as List).join(', ')
+                : doc['Name'].toString(),
+          }),
+    ];
+
+    await fetchUserServices();
   }
 
   Future<void> fetchUserServices() async {
@@ -51,11 +72,11 @@ class _OfferPageState extends State<OfferPage> {
 
     final offersQuery = await _firestore
         .collection('Offer')
-        .where('serviceID', whereIn: serviceIds)
+        .where('serviceID',
+            whereIn: serviceIds.isEmpty ? ['dummy'] : serviceIds)
         .get();
 
     final now = DateTime.now();
-
     final activeOfferServiceIds = <String>{};
 
     for (final offer in offersQuery.docs) {
@@ -65,10 +86,26 @@ class _OfferPageState extends State<OfferPage> {
       }
     }
 
+    allServices = services.where((service) {
+      return !activeOfferServiceIds.contains(service.id);
+    }).toList();
+
+    filterServices();
+  }
+
+  void filterServices() {
+    final query = _searchController.text.toLowerCase();
+
+    final filtered = allServices.where((service) {
+      final matchesCategory = selectedCategoryId == "All" ||
+          service['CategoryID'] == selectedCategoryId;
+      final description =
+          (service['Description'] ?? '').toString().toLowerCase();
+      return matchesCategory && description.contains(query);
+    }).toList();
+
     setState(() {
-      userServices = services.where((service) {
-        return !activeOfferServiceIds.contains(service.id);
-      }).toList();
+      filteredServices = filtered;
     });
   }
 
@@ -147,8 +184,9 @@ class _OfferPageState extends State<OfferPage> {
         'Availibility': true,
       });
 
+      allServices.remove(selectedService);
+      filterServices();
       setState(() {
-        userServices.remove(selectedService);
         selectedService = null;
         _selectedUnit = null;
         selectedEndDate = null;
@@ -173,17 +211,19 @@ class _OfferPageState extends State<OfferPage> {
   void dispose() {
     _priceController.dispose();
     _durationValueController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: Colors.white,
-      appBar: AppBar(backgroundColor: Colors.white,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         title: const Text('Add offer'),
         centerTitle: true,
-
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -192,12 +232,74 @@ class _OfferPageState extends State<OfferPage> {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
+                    // Category filter
+                    SizedBox(
+                      height: 50,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: categories.length,
+                        itemBuilder: (context, index) {
+                          final category = categories[index];
+                          final isSelected =
+                              selectedCategoryId == category['id'];
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                selectedCategoryId = category['id']!;
+                                filterServices();
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 4),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 18),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Colors.indigo
+                                    : Colors.grey[300],
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  category['name']!,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.black,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Search bar
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search),
+                        hintText: 'Search Service',
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 0, horizontal: 16),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Service list
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: userServices.length,
+                      itemCount: filteredServices.length,
                       itemBuilder: (context, index) {
-                        final service = userServices[index];
+                        final service = filteredServices[index];
                         return GestureDetector(
                           onTap: () {
                             setState(() {

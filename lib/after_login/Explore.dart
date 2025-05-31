@@ -16,14 +16,12 @@ class ExplorePage extends StatefulWidget {
 
 class _ExplorePageState extends State<ExplorePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  String _searchQuery = "";
+  String searchText = '';
   List<Map<String, dynamic>> _categories = [];
   String? _selectedCategory;
   List<Map<String, dynamic>> _services = [];
   Map<String, bool> _favoriteStatus = {};
   bool _isLoading = false;
-
-  
 
   @override
   void initState() {
@@ -41,7 +39,7 @@ class _ExplorePageState extends State<ExplorePage> {
       final categories = snapshot.docs.map((doc) {
         return {'id': doc.id, 'name': doc['Name'], 'type': doc['Type']};
       }).toList();
-
+      // Add 'Offers' category at the beginning
       categories
           .insert(0, {'id': 'offers', 'name': 'Offers', 'type': 'special'});
 
@@ -78,6 +76,7 @@ class _ExplorePageState extends State<ExplorePage> {
       final offerSnapshot = await _firestore
           .collection('Offer')
           .where('endTime', isGreaterThan: now)
+          .where('Availibility', isEqualTo: true)
           .orderBy('endTime', descending: true)
           .get();
 
@@ -220,28 +219,67 @@ class _ExplorePageState extends State<ExplorePage> {
         .get();
 
     if (wishlistSnapshot.docs.isEmpty) {
+      // No existing entry, create a new one
       await _firestore.collection('wishlists').add({
         'serviceId': serviceId,
         'userId': userId,
         'createdAt': FieldValue.serverTimestamp(),
+        'status': 'active',
       });
       setState(() => _favoriteStatus[serviceId] = true);
     } else {
-      await wishlistSnapshot.docs.first.reference.delete();
-      setState(() => _favoriteStatus[serviceId] = false);
+      final doc = wishlistSnapshot.docs.first;
+      final currentStatus = doc['status'];
+
+      if (currentStatus == 'active') {
+        // Deactivate if currently active
+        await doc.reference.update({
+          'status': 'deactivated',
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        setState(() => _favoriteStatus[serviceId] = false);
+      } else {
+        // Reactivate if currently deactivated
+        await doc.reference.update({
+          'status': 'active',
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        setState(() => _favoriteStatus[serviceId] = true);
+      }
     }
   }
 
   void _onItemTapped(int index) {
     if (index == 1) {
-      Navigator.push(
-          context, MaterialPageRoute(builder: (_) => const WishlistPage()));
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const WishlistPage(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
     } else if (index == 2) {
-      Navigator.push(
-          context, MaterialPageRoute(builder: (_) => const MessagesPage()));
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const MessagesPage(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
     } else if (index == 3) {
-      Navigator.push(
-          context, MaterialPageRoute(builder: (_) => const ProfilePage()));
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const ProfilePage(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
     }
   }
 
@@ -365,18 +403,21 @@ class _ExplorePageState extends State<ExplorePage> {
                           decoration: InputDecoration(
                             fillColor: Colors.grey[100],
                             hintText: "Start your search",
-                            suffixIcon: const Icon(Icons.search, color: Colors.black),
+                            suffixIcon:
+                                const Icon(Icons.search, color: Colors.black),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(30),
+                              borderRadius: BorderRadius.circular(15),
                               borderSide: BorderSide.none,
-                              
                             ),
                             filled: true,
                             contentPadding: EdgeInsets.symmetric(
                                 vertical: 10, horizontal: 15),
                           ),
-                          onChanged: (value) =>
-                              setState(() => _searchQuery = value),
+                          onChanged: (value) {
+                            setState(() {
+                              searchText = value.trim();
+                            });
+                          },
                         ),
                       ),
                       if (_services.isEmpty)
@@ -394,7 +435,7 @@ class _ExplorePageState extends State<ExplorePage> {
                       ..._services
                           .where((service) => service['description']
                               .toLowerCase()
-                              .contains(_searchQuery.toLowerCase()))
+                              .contains(searchText.toLowerCase()))
                           .map((service) {
                         final serviceId = service['id'];
                         final isFavorite = _favoriteStatus[serviceId] ?? false;
@@ -428,7 +469,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                                 top: Radius.circular(16)),
                                         child: CachedNetworkImage(
                                           imageUrl: service['imageUrl'],
-                                          height: 220,
+                                          height: 200,
                                           width: double.infinity,
                                           fit: BoxFit.cover,
                                           placeholder: (context, url) =>
@@ -515,6 +556,7 @@ class _ExplorePageState extends State<ExplorePage> {
               icon: Icon(Icons.favorite_border), label: "Wishlists"),
           BottomNavigationBarItem(icon: Icon(Icons.message), label: "Messages"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+          
         ],
       ),
     );

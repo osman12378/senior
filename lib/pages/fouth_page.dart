@@ -30,7 +30,7 @@ class Fourthpage extends StatelessWidget {
                 textAlign: TextAlign.center,
                 text: TextSpan(
                   style: TextStyle(
-                    fontSize: 33,
+                    fontSize: 30,
                     color: Colors.black, // Black color for the body text
                     fontWeight: FontWeight.bold, // Make the body text bold
                   ),
@@ -51,7 +51,7 @@ class Fourthpage extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(height: 60), // Add some spacing
+              SizedBox(height: 30), // Add some spacing
               // Next button with purple background and white text
               ElevatedButton(
                 onPressed: () {

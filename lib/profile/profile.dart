@@ -107,14 +107,35 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _onItemTapped(int index) {
     if (index == 0) {
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => ExplorePage()));
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const ExplorePage(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
     } else if (index == 1) {
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => WishlistPage()));
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const WishlistPage(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
     } else if (index == 2) {
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => MessagesPage()));
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const MessagesPage(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
     }
   }
 
@@ -178,9 +199,15 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: const Text("Edit profile"),
                     trailing: const Icon(Icons.arrow_forward_ios),
                     onTap: () {
-                      Navigator.pushReplacement(
+                      Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => EditProfile()),
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  EditProfile(),
+                          transitionDuration: Duration.zero,
+                          reverseTransitionDuration: Duration.zero,
+                        ),
                       );
                     },
                   ),
@@ -191,10 +218,15 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: const Text("Track bookings"),
                     trailing: const Icon(Icons.arrow_forward_ios),
                     onTap: () {
-                      Navigator.pushReplacement(
+                      Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (context) => TrackMyBookingsPage()),
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  TrackMyBookingsPage(),
+                          transitionDuration: Duration.zero,
+                          reverseTransitionDuration: Duration.zero,
+                        ),
                       );
                     },
                   ),
@@ -207,10 +239,15 @@ class _ProfilePageState extends State<ProfilePage> {
                       title: const Text("Become a host"),
                       trailing: const Icon(Icons.arrow_forward_ios),
                       onTap: () {
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
-                          MaterialPageRoute(
-                              builder: (context) => SubscriptionPage()),
+                          PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  SubscriptionPage(),
+                          transitionDuration: Duration.zero,
+                          reverseTransitionDuration: Duration.zero,
+                        ),
                         );
                       },
                     ),
@@ -223,7 +260,13 @@ class _ProfilePageState extends State<ProfilePage> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => ManageBooking()),
+                          PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  ManageBooking(),
+                          transitionDuration: Duration.zero,
+                          reverseTransitionDuration: Duration.zero,
+                        ),
                         ).then((_) {
                           // This runs when you come back from ServicePage
                           setState(() {
@@ -239,7 +282,13 @@ class _ProfilePageState extends State<ProfilePage> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => Select()),
+                          PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  Select(),
+                          transitionDuration: Duration.zero,
+                          reverseTransitionDuration: Duration.zero,
+                        ),
                         ).then((_) {
                           // This runs when you come back from ServicePage
                           setState(() {
@@ -255,7 +304,13 @@ class _ProfilePageState extends State<ProfilePage> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => ManageServicesPage()),
+                          PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  ManageServicesPage(),
+                          transitionDuration: Duration.zero,
+                          reverseTransitionDuration: Duration.zero,
+                        ),
                         ).then((_) {
                           // This runs when you come back from ServicePage
                           setState(() {
@@ -270,9 +325,15 @@ class _ProfilePageState extends State<ProfilePage> {
                         title: const Text("RentX an offer"),
                         trailing: const Icon(Icons.arrow_forward_ios),
                         onTap: () {
-                          Navigator.push(
+                            Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => OfferPage()),
+                            PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  OfferPage(),
+                          transitionDuration: Duration.zero,
+                          reverseTransitionDuration: Duration.zero,
+                        ),
                           ).then((_) {
                             // This runs when you come back from ServicePage
                             setState(() {
@@ -286,9 +347,15 @@ class _ProfilePageState extends State<ProfilePage> {
                         title: const Text("Manage Offer"),
                         trailing: const Icon(Icons.arrow_forward_ios),
                         onTap: () {
-                          Navigator.push(
+                            Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => ManageOffers()),
+                            PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  ManageOffers(),
+                          transitionDuration: Duration.zero,
+                          reverseTransitionDuration: Duration.zero,
+                        ),
                           ).then((_) {
                             // This runs when you come back from ServicePage
                             setState(() {
@@ -307,7 +374,13 @@ class _ProfilePageState extends State<ProfilePage> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => ChangePasswordPage()),
+                        PageRouteBuilder(
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  ChangePasswordPage(),
+                          transitionDuration: Duration.zero,
+                          reverseTransitionDuration: Duration.zero,
+                        ),
                       ).then((_) {
                         // This runs when you come back from ServicePage
                         setState(() {

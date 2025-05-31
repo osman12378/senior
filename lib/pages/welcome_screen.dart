@@ -95,7 +95,7 @@ class WelcomePage extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 50),
+                  SizedBox(height: 25),
                   // Log In Button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(

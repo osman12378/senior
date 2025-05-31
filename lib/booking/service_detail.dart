@@ -4,8 +4,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 class ServiceDetail extends StatefulWidget {
   final String bookingId;
+  final num price; // ✅ Add this
 
-  const ServiceDetail({Key? key, required this.bookingId}) : super(key: key);
+  const ServiceDetail({
+    Key? key,
+    required this.bookingId,
+    required this.price, // ✅ Require this in constructor
+  }) : super(key: key);
 
   @override
   State<ServiceDetail> createState() => _ServiceDetailState();
@@ -16,6 +21,8 @@ class _ServiceDetailState extends State<ServiceDetail> {
   String? bookingStatus;
   String? serviceImageUrl;
   bool isLoading = true;
+  DateTime? checkInDate;
+  DateTime? checkOutDate;
 
   @override
   void initState() {
@@ -56,6 +63,8 @@ class _ServiceDetailState extends State<ServiceDetail> {
       setState(() {
         serviceData = serviceDoc.data();
         bookingStatus = bookingDoc.get("status");
+        checkInDate = bookingDoc.get("checkin-date").toDate();
+        checkOutDate = bookingDoc.get("checkout-date").toDate();
         serviceImageUrl = imageSnapshot.docs.isNotEmpty
             ? imageSnapshot.docs.first.get("URL")
             : null;
@@ -110,9 +119,9 @@ class _ServiceDetailState extends State<ServiceDetail> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        title: Text("Service Details")),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: Text("Service Details")),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : serviceData == null
@@ -169,9 +178,19 @@ class _ServiceDetailState extends State<ServiceDetail> {
                                 ),
                               ),
                               SizedBox(height: 10),
-                              Text("Price: \$${serviceData!["Price"] ?? 0}"),
+                              Text(
+                                  " Full-Price: \$${widget.price.toStringAsFixed(2)}"), // ✅ Use passed price
                               Text(
                                   "Type: ${serviceData!["Type"] ?? "Unknown"}"),
+                              SizedBox(height: 10),
+                              if (checkInDate != null)
+                                Text(
+                                  "Check-in Date: ${checkInDate!.toLocal().toString().split(' ')[0]}",
+                                ),
+                              if (checkOutDate != null)
+                                Text(
+                                  "Check-out Date: ${checkOutDate!.toLocal().toString().split(' ')[0]}",
+                                ),
                               SizedBox(height: 20),
                               Row(
                                 mainAxisAlignment:

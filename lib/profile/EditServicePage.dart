@@ -3,7 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart'; // For generating a unique name with date
+import 'package:intl/intl.dart';
 
 class EditServicePage extends StatefulWidget {
   final String serviceId;
@@ -16,11 +16,11 @@ class EditServicePage extends StatefulWidget {
 
 class _EditServicePageState extends State<EditServicePage> {
   String _price = '';
-  String _photoUrl = '';
-  bool _isUploading = false; // Flag to track upload status
+  bool _isUploading = false;
   final TextEditingController _priceController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   File? _pickedImage;
+  List<String> _photoUrls = [];
 
   @override
   void initState() {
@@ -47,11 +47,9 @@ class _EditServicePageState extends State<EditServicePage> {
         .where('ServiceID', isEqualTo: widget.serviceId)
         .get();
 
-    if (images.docs.isNotEmpty) {
-      setState(() {
-        _photoUrl = images.docs.first['URL'];
-      });
-    }
+    setState(() {
+      _photoUrls = images.docs.map((doc) => doc['URL'] as String).toList();
+    });
   }
 
   Future<void> _addPhoto() async {
@@ -72,39 +70,34 @@ class _EditServicePageState extends State<EditServicePage> {
       return;
     }
 
-    // Update the price in Firestore
     await FirebaseFirestore.instance
         .collection('Service')
         .doc(widget.serviceId)
         .update({'Price': double.parse(newPrice)});
 
-    // Handle image upload if a new image was picked
     if (_pickedImage != null) {
-      // Show the loading indicator
       setState(() {
         _isUploading = true;
       });
 
-      // Generate a unique name for the image using timestamp
       String fileName =
           DateFormat('yyyyMMdd_HHmmss').format(DateTime.now()) + ".jpg";
 
-      final ref = FirebaseStorage.instance.ref().child(
-          'service_images/${widget.serviceId}/$fileName'); // Use unique name
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('service_images/${widget.serviceId}/$fileName');
 
       try {
-        // Upload the new image to Firebase Storage
         await ref.putFile(_pickedImage!);
         final url = await ref.getDownloadURL();
 
-        // Add the new image to Firestore (without removing old photos)
         await FirebaseFirestore.instance.collection('Service Images').add({
           'ServiceID': widget.serviceId,
           'URL': url,
         });
 
         setState(() {
-          _photoUrl = url;
+          _photoUrls.add(url);
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -116,14 +109,13 @@ class _EditServicePageState extends State<EditServicePage> {
           const SnackBar(content: Text('Error uploading photo')),
         );
       } finally {
-        // Hide the loading indicator after the upload is complete
         setState(() {
           _isUploading = false;
+          _pickedImage = null;
         });
       }
     }
 
-    // Update the price in the UI
     setState(() {
       _price = newPrice;
     });
@@ -149,7 +141,6 @@ class _EditServicePageState extends State<EditServicePage> {
     if (confirm != true) return;
 
     try {
-      // Mark the service as deleted (soft delete) and record that it was deleted by the user
       await FirebaseFirestore.instance
           .collection('Service')
           .doc(widget.serviceId)
@@ -162,13 +153,32 @@ class _EditServicePageState extends State<EditServicePage> {
         const SnackBar(content: Text('Service marked as deleted')),
       );
 
-      Navigator.pop(context); // Go back after soft delete
+      Navigator.pop(context);
     } catch (e) {
       print('Error marking service as deleted: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to delete service')),
       );
     }
+  }
+
+  void _showFullScreenImage(String imageUrl) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          body: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Center(
+              child: Hero(
+                tag: imageUrl,
+                child: Image.network(imageUrl),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -182,22 +192,12 @@ class _EditServicePageState extends State<EditServicePage> {
             children: [
               const SizedBox(height: 10),
 
-              // Display the image first
+              // Display newly picked image (not yet uploaded)
               if (_pickedImage != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Image.file(
                     _pickedImage!,
-                    width: 150,
-                    height: 150,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              else if (_photoUrl.isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    _photoUrl,
                     width: 150,
                     height: 150,
                     fit: BoxFit.cover,
@@ -250,6 +250,48 @@ class _EditServicePageState extends State<EditServicePage> {
                 icon: const Icon(Icons.delete),
                 label: const Text('Delete Service'),
               ),
+
+              const SizedBox(height: 30),
+
+              const Divider(thickness: 1),
+              const Text(
+                'All Uploaded Images:',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+
+              SizedBox(
+                height: 120,
+                child: _photoUrls.isEmpty
+                    ? const Text('No images yet.')
+                    : ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _photoUrls.length,
+                        itemBuilder: (context, index) {
+                          final imageUrl = _photoUrls[index];
+                          return GestureDetector(
+                            onTap: () => _showFullScreenImage(imageUrl),
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Hero(
+                                  tag: imageUrl,
+                                  child: Image.network(
+                                    imageUrl,
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              const SizedBox(height: 20),
             ],
           ),
         ),

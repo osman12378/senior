@@ -32,6 +32,7 @@ class _WishlistPageState extends State<WishlistPage> {
       final snapshot = await _firestore
           .collection('wishlists')
           .where('userId', isEqualTo: userId)
+          .where('status', isEqualTo: 'active')
           .get();
 
       List<Map<String, dynamic>> wishlistItems = [];
@@ -84,7 +85,12 @@ class _WishlistPageState extends State<WishlistPage> {
           .get();
 
       if (snapshot.docs.isNotEmpty) {
-        await snapshot.docs.first.reference.delete();
+        await snapshot.docs.first.reference.update(
+          {
+        'status': 'deactivated',
+        'updatedAt': FieldValue.serverTimestamp(),
+      }
+        );
         _loadWishlist();
       }
     } catch (e) {
@@ -95,16 +101,37 @@ class _WishlistPageState extends State<WishlistPage> {
   void _onItemTapped(int index) {
     switch (index) {
       case 0:
-        Navigator.push(
-            context, MaterialPageRoute(builder: (_) => ExplorePage()));
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const ExplorePage(),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
         break;
       case 2:
-        Navigator.push(
-            context, MaterialPageRoute(builder: (_) => MessagesPage()));
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const MessagesPage(),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
         break;
       case 3:
-        Navigator.push(
-            context, MaterialPageRoute(builder: (_) => ProfilePage()));
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const ProfilePage(),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
         break;
     }
   }
@@ -206,7 +233,7 @@ class _WishlistPageState extends State<WishlistPage> {
                                 Text(
                                   service['description'] ?? 'No description',
                                   style: const TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),

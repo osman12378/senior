@@ -101,6 +101,18 @@ class _EditProfileState extends State<EditProfile> {
     );
   }
 
+  void _openFullScreenImage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FullScreenImagePage(
+          imageFile: _selectedImage,
+          imageUrl: _profileImageUrl,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -129,42 +141,45 @@ class _EditProfileState extends State<EditProfile> {
               padding: EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // Profile Picture
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.grey.shade300,
-                        child: ClipOval(
-                          child: _selectedImage != null
-                              ? Image.file(
-                                  _selectedImage!,
-                                  width: 100,
-                                  height: 100,
-                                  fit: BoxFit.cover,
-                                )
-                              : CachedNetworkImage(
-                                  imageUrl: _profileImageUrl ?? '',
-                                  placeholder: (context, url) =>
-                                      CircularProgressIndicator(),
-                                  errorWidget: (context, url, error) =>
-                                      Icon(Icons.person, size: 50),
-                                  width: 100,
-                                  height: 100,
-                                  fit: BoxFit.cover,
-                                ),
+                  // Profile Picture with tap
+                  GestureDetector(
+                    onTap: _openFullScreenImage,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.grey.shade300,
+                          child: ClipOval(
+                            child: _selectedImage != null
+                                ? Image.file(
+                                    _selectedImage!,
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                  )
+                                : CachedNetworkImage(
+                                    imageUrl: _profileImageUrl ?? '',
+                                    placeholder: (context, url) =>
+                                        CircularProgressIndicator(),
+                                    errorWidget: (context, url, error) =>
+                                        Icon(Icons.person, size: 50),
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                  ),
+                          ),
                         ),
-                      ),
-                      Positioned(
-                        bottom: -5,
-                        right: -5,
-                        child: IconButton(
-                          icon: Icon(Icons.camera_alt, size: 30),
-                          onPressed: _pickImage,
+                        Positioned(
+                          bottom: -5,
+                          right: -5,
+                          child: IconButton(
+                            icon: Icon(Icons.camera_alt, size: 30),
+                            onPressed: _pickImage,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   SizedBox(height: 20),
 
@@ -179,10 +194,10 @@ class _EditProfileState extends State<EditProfile> {
                   ),
                   SizedBox(height: 20),
 
-                  // Phone Number (Intl Phone Picker)
+                  // Phone Number
                   IntlPhoneField(
                     controller: _phoneController,
-                    initialCountryCode: "LB", // Default country (United States)
+                    initialCountryCode: "LB",
                     decoration: InputDecoration(
                       labelText: "Phone Number",
                       border: OutlineInputBorder(),
@@ -216,6 +231,44 @@ class _EditProfileState extends State<EditProfile> {
                 ],
               ),
             ),
+    );
+  }
+}
+
+// Full screen image viewer page
+class FullScreenImagePage extends StatelessWidget {
+  final File? imageFile;
+  final String? imageUrl;
+
+  const FullScreenImagePage({Key? key, this.imageFile, this.imageUrl})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    Widget imageWidget;
+
+    if (imageFile != null) {
+      imageWidget = Image.file(imageFile!, fit: BoxFit.contain);
+    } else if (imageUrl != null && imageUrl!.isNotEmpty) {
+      imageWidget = CachedNetworkImage(
+        imageUrl: imageUrl!,
+        fit: BoxFit.contain,
+        placeholder: (context, url) =>
+            Center(child: CircularProgressIndicator()),
+        errorWidget: (context, url, error) => Icon(Icons.error),
+      );
+    } else {
+      imageWidget = Icon(Icons.person, size: 100);
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        iconTheme: IconThemeData(color: Colors.white),
+        elevation: 0,
+      ),
+      body: Center(child: imageWidget),
     );
   }
 }

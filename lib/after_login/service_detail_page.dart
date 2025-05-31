@@ -30,7 +30,52 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
   @override
   void initState() {
     super.initState();
-    loadServiceDetails();
+    loadServiceDetails().then((_) {
+      fetchBookedDateRanges();
+    });
+  }
+
+  Future<double> getEffectivePrice(
+      String serviceId, double servicePrice) async {
+    try {
+      final offerSnapshot = await _firestore
+          .collection('Offer')
+          .where('serviceID', isEqualTo: serviceId)
+          .where('Availibility', isEqualTo: true)
+          .limit(1)
+          .get();
+
+      if (offerSnapshot.docs.isEmpty) {
+        // No offer for this service
+        return servicePrice;
+      }
+
+      final offerData = offerSnapshot.docs.first.data();
+
+      if (!offerData.containsKey('price') ||
+          !offerData.containsKey('endTime')) {
+        // Missing offer price or endDate fields, fallback to service price
+        return servicePrice;
+      }
+
+      final Timestamp offerEndTimestamp = offerData['endTime'];
+      final DateTime offerEndDate = offerEndTimestamp.toDate();
+
+      if (offerEndDate.isBefore(DateTime.now())) {
+        // Offer expired, use service price
+        return servicePrice;
+      }
+
+      final offerPrice = offerData['price'];
+      if (offerPrice is num) {
+        return offerPrice.toDouble();
+      }
+
+      return servicePrice;
+    } catch (e) {
+      debugPrint('Error fetching offer price: $e');
+      return servicePrice;
+    }
   }
 
   Future<void> loadServiceDetails() async {
@@ -40,12 +85,30 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
       if (!serviceDoc.exists) return;
 
       final data = serviceDoc.data()!;
+      final servicePrice =
+          data['Price'] is num ? (data['Price'] as num).toDouble() : 0.0;
+      final effectivePrice =
+          await getEffectivePrice(widget.serviceId, servicePrice);
+      data['Price'] = effectivePrice;
+
+      // 👤 Fetch user info (owner of the service)
+      final String userId = data['UserID'];
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+
+      Map<String, dynamic>? userInfo;
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+        userInfo = {
+          'username': userData['username'],
+          'email': userData['email'],
+          'image_url': userData['image_url'],
+        };
+      }
 
       final imagesSnapshot = await _firestore
           .collection('Service Images')
           .where('ServiceID', isEqualTo: widget.serviceId)
           .get();
-
       List<String> urls =
           imagesSnapshot.docs.map((doc) => doc['URL'] as String).toList();
 
@@ -56,17 +119,14 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
           : '';
 
       Map<String, dynamic> combinedExtra = {};
-
       if (categoryType == 'cars') {
         final carSnapshot = await _firestore
             .collection('CarDescription')
             .where('ServiceID', isEqualTo: widget.serviceId)
             .limit(1)
             .get();
-
         final addressDoc =
             await _firestore.collection('Address').doc(data['AddressID']).get();
-
         if (carSnapshot.docs.isNotEmpty) {
           final carData =
               Map<String, dynamic>.from(carSnapshot.docs.first.data());
@@ -89,14 +149,12 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
 
       double avgRating = 0.0;
       int userRating = 0;
-
       if (ratingsSnapshot.docs.isNotEmpty) {
         final ratings = ratingsSnapshot.docs
             .map((doc) => (doc['Rating'] as num).toDouble())
             .toList();
         avgRating = ratings.reduce((a, b) => a + b) / ratings.length;
 
-        // Check if user has rated
         final user = _auth.currentUser;
         if (user != null) {
           try {
@@ -104,14 +162,15 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
               (doc) => doc['UserID'] == user.uid,
             );
             userRating = (userRatingDoc['Rating'] as num).toInt();
-          } catch (e) {
-            // No rating found for this user, so leave userRating as 0 or default
-          }
+          } catch (_) {}
         }
       }
 
       setState(() {
-        serviceData = data;
+        serviceData = {
+          ...data,
+          'userInfo': userInfo, // 🔗 attach user info to serviceData
+        };
         imageUrls = urls;
         extraData = combinedExtra;
         averageRating = avgRating;
@@ -213,6 +272,56 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
     );
   }
 
+  List<DateTimeRange> bookedDateRanges = [];
+
+  Future<void> fetchBookedDateRanges() async {
+    try {
+      // Step 1: Get all BookingIDs linked to this service from Book-Service table
+      final bookServiceSnapshot = await _firestore
+          .collection('Book-Service')
+          .where('ServiceID', isEqualTo: widget.serviceId)
+          .get();
+
+      List<String> bookingIds = bookServiceSnapshot.docs
+          .map((doc) => doc['BookingID'] as String)
+          .toList();
+
+      if (bookingIds.isEmpty) {
+        bookedDateRanges = [];
+        return;
+      }
+
+      // Step 2: Query Booking collection for approved bookings with these bookingIds
+      final bookingsSnapshot = await _firestore
+          .collection('Booking')
+          .where(FieldPath.documentId, whereIn: bookingIds)
+          .where('status', isEqualTo: 'approved')
+          .get();
+
+      List<DateTimeRange> ranges = [];
+
+      for (var doc in bookingsSnapshot.docs) {
+        final data = doc.data();
+
+        final Timestamp? checkinTimestamp = data['checkin-date'];
+        final Timestamp? checkoutTimestamp = data['checkout-date'];
+
+        if (checkinTimestamp != null && checkoutTimestamp != null) {
+          final checkinDate = checkinTimestamp.toDate();
+          final checkoutDate = checkoutTimestamp.toDate();
+
+          ranges.add(DateTimeRange(start: checkinDate, end: checkoutDate));
+        }
+      }
+
+      setState(() {
+        bookedDateRanges = ranges;
+      });
+    } catch (e) {
+      debugPrint('Error fetching booked date ranges: $e');
+    }
+  }
+
   Future<void> selectDate({required bool isStart}) async {
     final now = DateTime.now();
     DateTime initialDate = now;
@@ -220,9 +329,18 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
     DateTime lastDate = DateTime(now.year + 2);
 
     if (!isStart && startDate != null) {
-      // For end date, don't allow before start date
       initialDate = startDate!.add(const Duration(days: 1));
       firstDate = initialDate;
+    }
+
+    bool isDateBooked(DateTime day) {
+      // Check if 'day' falls inside any booked date range
+      for (final range in bookedDateRanges) {
+        if (!day.isBefore(range.start) && !day.isAfter(range.end)) {
+          return true;
+        }
+      }
+      return false;
     }
 
     final picked = await showDatePicker(
@@ -230,6 +348,16 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
       initialDate: initialDate,
       firstDate: firstDate,
       lastDate: lastDate,
+      selectableDayPredicate: (day) {
+        // Disable booked dates
+        if (isDateBooked(day)) return false;
+
+        // For end date picker, also disallow selecting before startDate
+        if (!isStart && startDate != null && day.isBefore(startDate!))
+          return false;
+
+        return true;
+      },
     );
 
     if (picked != null) {
@@ -271,7 +399,7 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
 
     final pricePerDay = (serviceData!['Price'] as num).toDouble();
 
-    final totalDays = endDate!.difference(startDate!).inDays + 1;
+    final totalDays = endDate!.difference(startDate!).inDays ;
     final fullPrice = totalDays * pricePerDay;
 
     Navigator.push(
@@ -290,24 +418,32 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (serviceData == null) {
-      return const Scaffold(body: Center(child: Text("Service not found")));
+      return const Scaffold(
+        body: Center(child: Text("Service not found")),
+      );
     }
 
-    return Scaffold(backgroundColor: Colors.white,
-      appBar: AppBar(backgroundColor: Colors.white,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-          title: const Text(
-        "Service Details",
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
+        title: const Text(
+          "Service Details",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
         ),
-      )),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
@@ -339,7 +475,54 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
               ),
             const SizedBox(height: 16),
 
-            // ⭐ Rating
+            const Text(
+              "Hosted by",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.indigo,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 25,
+                  backgroundImage:
+                      serviceData!['userInfo']['image_url'] != null &&
+                              (serviceData!['userInfo']['image_url'] as String)
+                                  .isNotEmpty
+                          ? CachedNetworkImageProvider(
+                              serviceData!['userInfo']['image_url'])
+                          : const AssetImage('assests/default_avatar.jpg')
+                              as ImageProvider,
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      serviceData!['userInfo']['username'] ?? 'Unknown Host',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      serviceData!['userInfo']['email'] ?? 'No email provided',
+                      style: const TextStyle(
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // ⭐ Rating row
             Row(
               children: [
                 GestureDetector(
@@ -347,7 +530,8 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                     showModalBottomSheet(
                       context: context,
                       shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(20)),
                       ),
                       builder: (context) {
                         return Padding(
@@ -357,27 +541,29 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                             children: [
                               const Text(
                                 "Rate this Service",
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                    fontSize: 20, fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 16),
                               buildRatingStars(),
-                              
                               const SizedBox(height: 16),
-                            
                             ],
                           ),
                         );
                       },
                     );
-                          },
-                  child: const Text("Rate this Service",
-                      style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.indigo)),
+                  },
+                  child: const Text(
+                    "Rate this Service",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.indigo,
+                    ),
+                  ),
                 ),
-                Spacer(),
-                Icon(Icons.star),
+                const Spacer(),
+                const Icon(Icons.star),
                 Text(
                   "${averageRating.toStringAsFixed(1)}",
                   style: const TextStyle(
@@ -385,17 +571,25 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                 ),
               ],
             ),
-              Text(
+
+            const SizedBox(height: 8),
+
+            Text(
               serviceData!['Description'] ?? '',
             ),
+
             const SizedBox(height: 8),
             const Divider(),
-            // 📄 Details
-            const Text("Details",
-                style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.indigo)),
+
+            // 📄 Details section
+            const Text(
+              "Details",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.indigo,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
               "Type: ${serviceData!['Type']}",
@@ -405,28 +599,36 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
             ),
 
             if (extraData != null)
-              ...extraData!.entries.map((entry) => Text(
-                    "${entry.key}: ${entry.value}",
-                  )),
+              ...extraData!.entries.map(
+                (entry) => Text(
+                  "${entry.key}: ${entry.value}",
+                ),
+              ),
 
-            // 📅 Date Pickers
+            // 📅 Date Pickers & total price
             const SizedBox(height: 24),
             Center(
-              child: Text("Total: \$${fullPrice.toStringAsFixed(2)}",
-                  style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.bold)),
+              child: Text(
+                "Total: \$${fullPrice.toStringAsFixed(2)}",
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
+
             const SizedBox(height: 16),
+
             Row(
               children: [
-                
                 _buildStartDATEButton(),
                 const SizedBox(width: 10),
                 _buildEndDATEButton(),
               ],
             ),
-            const SizedBox(height: 10),
-            
+
+            const SizedBox(height: 20),
+
             Center(
               child: ElevatedButton(
                 onPressed: goToPaymentPage,
@@ -438,8 +640,10 @@ class _ServiceDetailPageState extends State<ServiceDetailPage> {
                     borderRadius: BorderRadius.circular(15),
                   ),
                 ),
-                child: const Text("Proceed to Payment",
-                    style: TextStyle(fontSize: 16, color: Colors.white)),
+                child: const Text(
+                  "Proceed to Payment",
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
               ),
             ),
           ],

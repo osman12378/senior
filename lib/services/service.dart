@@ -43,7 +43,7 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content:
-                Text("Please fill all fields and select at least 1 image")),
+                Text("Please fill all fields and select at least 1 image"), backgroundColor: Colors.red,),
       );
       return;
     }
@@ -65,10 +65,12 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: Colors.white,
+    return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        surfaceTintColor: Colors.white,
-        title: const Text('Add Service')),
+          surfaceTintColor: Colors.white,
+          backgroundColor: Colors.white,
+          title: const Text('Add Service')),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -105,8 +107,13 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
                     const SizedBox(height: 10),
                     ElevatedButton.icon(
                       onPressed: pickImages,
-                      icon: const Icon(Icons.photo_library),
-                      label: const Text("Select Images"),
+                      icon:
+                          const Icon(Icons.photo_library, color: Colors.white),
+                      label: const Text("Select Images",
+                          style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo, // Background color
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Wrap(
@@ -119,7 +126,14 @@ class _ServiceFormPageState extends State<ServiceFormPage> {
                     const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: goToNextPage,
-                      child: const Text("Continue to Address"),
+                      child: const Text(
+                        "Continue to Address",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            Colors.indigo, // Set background color to blue
+                      ),
                     ),
                   ],
                 ),

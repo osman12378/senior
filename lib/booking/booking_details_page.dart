@@ -21,6 +21,7 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
   String? serviceImageUrl;
   DateTime? checkinDate;
   DateTime? checkoutDate;
+  double? fullPrice;
   bool loading = true;
 
   @override
@@ -43,6 +44,19 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
     final bookingData = bookingDoc.data()!;
     checkinDate = (bookingData['checkin-date'] as Timestamp).toDate();
     checkoutDate = (bookingData['checkout-date'] as Timestamp).toDate();
+
+    // Safely get full-price
+    if (bookingData.containsKey('full-price')) {
+      final value = bookingData['full-price'];
+      if (value is num) {
+        fullPrice = value.toDouble();
+        print("fullPrice loaded: $fullPrice");
+      } else {
+        print("full-price exists but is not a number: $value");
+      }
+    } else {
+      print("full-price key not found in booking data.");
+    }
 
     // Fetch Book-Service to get ServiceID
     final bookServiceSnapshot = await FirebaseFirestore.instance
@@ -111,7 +125,12 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Booking Payment")),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        title: Text("Booking Payment"),
+      ),
       body: loading
           ? Center(child: CircularProgressIndicator())
           : paymentImageUrl == null
@@ -127,6 +146,7 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
                             checkinDate != null &&
                             checkoutDate != null)
                           Card(
+                            color: Colors.white,
                             elevation: 4,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
@@ -158,11 +178,16 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
                                   Text("Description: $serviceDescription"),
                                   SizedBox(height: 5),
                                   Text(
-                                    "Check-in: ${checkinDate!.toLocal().toString().split(' ')[0]}",
-                                  ),
+                                      "Check-in: ${checkinDate!.toLocal().toString().split(' ')[0]}"),
                                   Text(
-                                    "Check-out: ${checkoutDate!.toLocal().toString().split(' ')[0]}",
-                                  ),
+                                      "Check-out: ${checkoutDate!.toLocal().toString().split(' ')[0]}"),
+                                  SizedBox(height: 5),
+                                  if (fullPrice != null)
+                                    Text(
+                                      fullPrice != null
+                                          ? "Total Price: \$${fullPrice!.toStringAsFixed(2)}"
+                                          : "Total Price: Not available",
+                                    ),
                                 ],
                               ),
                             ),
@@ -172,6 +197,7 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
 
                         /// --- Payment Info Card ---
                         Card(
+                          color: Colors.white,
                           elevation: 4,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),

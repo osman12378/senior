@@ -93,7 +93,10 @@ class _BookingPaymentPage extends State<BookingPaymentPage> {
       Navigator.of(context).pop(); // Close loading dialog
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Booking submitted successfully')),
+        SnackBar(content: Text('Booking submitted successfully'),backgroundColor: Colors.green,),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please rate the service'),backgroundColor: Colors.green,),
       );
 
       Navigator.pushReplacement(

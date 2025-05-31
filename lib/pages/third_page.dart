@@ -24,7 +24,7 @@ class ThirdPage extends StatelessWidget {
               'List & Earn\nSeamlessly', // Combined title text
               textAlign: TextAlign.center, // Center the title text
               style: TextStyle(
-                fontSize: 50, // Big font size
+                fontSize: 48, // Big font size
                 fontWeight: FontWeight.bold,
                 color: Colors.indigo, // Purple color
               ),
@@ -35,7 +35,7 @@ class ThirdPage extends StatelessWidget {
               textAlign: TextAlign.center,
               text: TextSpan(
                 style: TextStyle(
-                  fontSize: 33,
+                  fontSize: 30,
                   color: Colors.black, // Black color for the body text
                   fontWeight: FontWeight.bold, // Make the body text bold
                 ),

@@ -22,13 +22,13 @@ class SecondPage extends StatelessWidget {
                   color: Colors.indigo, // Purple color
                 ),
               ),
-              SizedBox(height: 80), // Add some spacing
+              SizedBox(height: 50), // Add some spacing
               // Body text as a single block
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
                   style: TextStyle(
-                    fontSize: 33,
+                    fontSize: 30,
                     color: Colors.black, // Black color for the body text
                     fontWeight: FontWeight.bold, // Make the body text bold
                   ),

@@ -29,25 +29,25 @@ class _TrackMyBookingsPageState extends State<TrackMyBookingsPage> {
   }
 
   Future<List<Map<String, dynamic>>> fetchBookings() async {
-    List<Map<String, dynamic>> bookingsList = [];
-
     final bookingSnapshot = await FirebaseFirestore.instance
         .collection("Booking")
         .where("userId", isEqualTo: currentUser!.uid)
         .get();
 
-    for (var bookingDoc in bookingSnapshot.docs) {
-      var bookingData = bookingDoc.data();
-      String bookingId = bookingDoc.id;
+    final bookings = bookingSnapshot.docs;
 
-      Timestamp endTimestamp = bookingData["checkout-date"];
-      DateTime endDate = endTimestamp.toDate();
-      String status = bookingData["status"]?.toLowerCase() ?? "pending";
+    final futures = bookings.map((bookingDoc) async {
+      final bookingData = bookingDoc.data();
+      final bookingId = bookingDoc.id;
+
+      final endTimestamp = bookingData["checkout-date"];
+      final endDate = (endTimestamp as Timestamp).toDate();
+      final status = bookingData["status"]?.toLowerCase() ?? "pending";
 
       if (_selectedDateRange != null) {
         if (endDate.isBefore(_selectedDateRange!.start) ||
             endDate.isAfter(_selectedDateRange!.end)) {
-          continue;
+          return null;
         }
       }
 
@@ -57,32 +57,33 @@ class _TrackMyBookingsPageState extends State<TrackMyBookingsPage> {
           .limit(1)
           .get();
 
-      if (bookServiceSnapshot.docs.isEmpty) continue;
+      if (bookServiceSnapshot.docs.isEmpty) return null;
 
-      String serviceId = bookServiceSnapshot.docs.first.get("ServiceID");
+      final serviceId = bookServiceSnapshot.docs.first.get("ServiceID");
 
       final serviceDoc = await FirebaseFirestore.instance
           .collection("Service")
           .doc(serviceId)
           .get();
 
-      if (!serviceDoc.exists) continue;
+      if (!serviceDoc.exists) return null;
 
-      var serviceData = serviceDoc.data()!;
-      String description = serviceData["Description"] ?? "No Description";
-      num price = serviceData["Price"] ?? 0;
-      String type = serviceData["Type"] ?? "Unknown";
+      final serviceData = serviceDoc.data()!;
+      final description = serviceData["Description"] ?? "No Description";
+      final price = bookingData["full-price"] ?? 0;
+      final type = serviceData["Type"] ?? "Unknown";
 
-      bookingsList.add({
+      return {
         "bookingId": bookingId,
         "description": description,
         "price": price,
         "type": type,
         "status": status,
-      });
-    }
+      };
+    });
 
-    return bookingsList;
+    final results = await Future.wait(futures);
+    return results.whereType<Map<String, dynamic>>().toList();
   }
 
   Future<void> _pickDateRange() async {
@@ -224,8 +225,10 @@ class _TrackMyBookingsPageState extends State<TrackMyBookingsPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) =>
-                                ServiceDetail(bookingId: booking["bookingId"]),
+                            builder: (_) => ServiceDetail(
+                              bookingId: booking["bookingId"],
+                              price: booking["price"],
+                            ),
                           ),
                         );
                       },
